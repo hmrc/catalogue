@@ -74,6 +74,16 @@ object TeamRepositoryWrapper {
       }
     }
 
+    def asRepositoryTeamNameList(repoName: String): Option[Map[String, String]] = {
+      val decodedRepoName = URLDecoder.decode(repoName, "UTF-8")
+      teamRepos.filter(_.repositories.exists(r => r.name == decodedRepoName)) match {
+        case x if x.isEmpty => None
+        case x => Some(x.map { repoName -> _.teamName } toMap) }
+    }
+
+    def asRepositoryTeamNameList(): Map[String, String] =
+      teamRepos.flatMap { x => x.repositories.map { r => r.name -> x.teamName } } toMap
+
     private case class RepositoryTeam(repositories: Seq[Repository], teamName: String)
 
     private def asNameListOfGivenRepoType(repoType: RepoType.Value): Seq[String] = {

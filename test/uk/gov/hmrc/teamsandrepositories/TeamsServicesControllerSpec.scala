@@ -61,9 +61,7 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
       new TeamRepositories("test-team", List(
         Repository("repo-name", "repo-url", repoType = RepoType.Deployable),
         Repository("library-repo", "library-url", repoType = RepoType.Library)
-
       )),
-
       new TeamRepositories("another-team", List(
         Repository("another-repo", "another-url", repoType = RepoType.Deployable),
         Repository("middle-repo", "middle-url", repoType = RepoType.Deployable),
@@ -78,7 +76,6 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
         Repository(repoName, repoUrl, repoType = RepoType.Deployable, isInternal = isInternal)))), timestamp)
   }
 
-
   "Teams controller" should {
 
     "have the correct url set up for the teams list" in {
@@ -86,7 +83,7 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
     }
 
     "have the correct url set up for a team's services" in {
-      uk.gov.hmrc.teamsandrepositories.routes.TeamsServicesController.team("test-team").url mustBe "/api/teams/test-team"
+      uk.gov.hmrc.teamsandrepositories.routes.TeamsServicesController.repositoriesByTeam("test-team").url mustBe "/api/teams/test-team"
     }
 
     "have the correct url set up for the list of all services" in {
@@ -113,7 +110,7 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
 
     "Return all repo types belonging to a team" in {
       val controller = controllerWithData(defaultData)
-      val result = controller.team("another-team").apply(FakeRequest())
+      val result = controller.repositoriesByTeam("another-team").apply(FakeRequest())
 
       val timestampHeader = header("x-cache-timestamp", result)
       val data = contentAsJson(result).as[Map[String, List[String]]]
@@ -135,7 +132,7 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
         timestamp)
 
       val controller = controllerWithData(sourceData)
-      val result = controller.team("another-team").apply(FakeRequest())
+      val result = controller.repositoriesByTeam("another-team").apply(FakeRequest())
 
       contentAsJson(result).as[Map[String, List[String]]] mustBe Map(
         "Deployable" -> List("repo-name"),
@@ -152,7 +149,7 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
         timestamp)
 
       val controller = controllerWithData(sourceData)
-      val result = controller.team("test-team").apply(FakeRequest())
+      val result = controller.repositoriesByTeam("test-team").apply(FakeRequest())
 
       contentAsJson(result).as[Map[String, List[String]]] mustBe Map(
         "Deployable" -> List("aadvark-repo", "repo-name"),
@@ -197,7 +194,6 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
 
     }
   }
-
 
   "Retrieving a list of all services" should {
 
@@ -316,7 +312,7 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
         timestamp)
 
       val controller = controllerWithData(data)
-      val result = controller.team("test-team").apply(FakeRequest())
+      val result = controller.repositoriesByTeam("test-team").apply(FakeRequest())
 
       val json = contentAsJson(result)
 
@@ -330,7 +326,7 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
       val data = new CachedResult[Seq[TeamRepositories]](Seq(new TeamRepositories("test-team", List())), timestamp)
 
       val controller = controllerWithData(data)
-      val result = controller.team("test-team").apply(FakeRequest())
+      val result = controller.repositoriesByTeam("test-team").apply(FakeRequest())
 
       val json = contentAsJson(result)
 
@@ -349,7 +345,7 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
       val data = new CachedResult[Seq[TeamRepositories]](Seq(), timestamp)
 
       val controller = controllerWithData(data)
-      val result = controller.team("test-team").apply(FakeRequest())
+      val result = controller.repositoriesByTeam("test-team").apply(FakeRequest())
 
       status(result) mustBe 404
     }
@@ -397,6 +393,41 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
 
       status(result) mustBe 404
     }
+  }
+
+  "Retrieving a list of team names by service" should {
+
+    "Return a json list of repo to team mappings" in {
+      val controller = controllerWithData(defaultData)
+      val result = controller.teamsByRepository("repo-name").apply(FakeRequest())
+
+      status(result) mustBe 200
+      val data = contentAsJson(result).as[Map[String, String]]
+
+      data.size mustBe 1
+      data mustBe Map("repo-name" -> "test-team")
+
+
+      //      new TeamRepositories("test-team", List(
+      //        Repository("repo-name", "repo-url", repoType = RepoType.Deployable),
+      //        Repository("library-repo", "library-url", repoType = RepoType.Library)
+      //      )),
+      //      new TeamRepositories("another-team", List(
+      //        Repository("another-repo", "another-url", repoType = RepoType.Deployable),
+      //        Repository("middle-repo", "middle-url", repoType = RepoType.Deployable),
+      //        Repository("alibrary-repo", "library-url", repoType = RepoType.Library)
+      //      ))
+    }
+
+
+
+    "Return a 404 when the serivce is not found" in {
+      val controller = controllerWithData(defaultData)
+      val result = controller.teamsByRepository("not-Found").apply(FakeRequest())
+
+      status(result) mustBe 404
+    }
+
   }
 
   implicit class RichJsonValue(obj: JsValue) {
