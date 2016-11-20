@@ -20,6 +20,7 @@ import java.time.{LocalDateTime, ZoneId, ZonedDateTime}
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.Executors
 
+import com.google.inject.{Inject, Singleton}
 import play.api.Play
 import play.api.libs.json.Json.JsValueWrapper
 import play.api.libs.json._
@@ -86,8 +87,27 @@ object BlockingIOExecutionContext {
   implicit val executionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(32))
 }
 
-object TeamsRepositoriesController extends TeamsRepositoriesController
-with UrlTemplatesProvider {
+//object TeamsRepositoriesController extends TeamsRepositoriesController
+
+
+
+@Singleton
+case class DataLoader(load: () => Future[Seq[TeamRepositories]])
+
+
+class TeamsRepositoriesController @Inject()(theDataLoader:DataLoader) extends BaseController with UrlTemplatesProvider {
+
+  import TeamRepositoryWrapper._
+
+//  protected def ciUrlTemplates: UrlTemplates
+
+//  protected def dataSource: CachingRepositoryDataSource[Seq[TeamRepositories]]
+
+//  implicit val environmentFormats = Json.format[Link]
+//  implicit val linkFormats = Json.format[Environment]
+//  implicit val serviceFormats = Json.format[RepositoryDetails]
+
+  val CacheTimestampHeaderName = "X-Cache-Timestamp"
 
   import scala.collection.JavaConverters._
   val repositoriesToIgnore: List[String] = Play.current.configuration.getStringList("shared.repositories").fold(List.empty[String])(_.asScala.toList)
@@ -105,27 +125,25 @@ with UrlTemplatesProvider {
 
   protected val dataSource: CachingRepositoryDataSource[Seq[TeamRepositories]] = new CachingRepositoryDataSource[Seq[TeamRepositories]](
     Akka.system(), CacheConfig,
-    dataLoader,
+    theDataLoader.load,
     LocalDateTime.now
   )
-}
-
-trait TeamsRepositoriesController extends BaseController {
-
-  val repositoriesToIgnore: List[String]
 
 
-  import TeamRepositoryWrapper._
+//  val repositoriesToIgnore: List[String]
 
-  protected def ciUrlTemplates: UrlTemplates
 
-  protected def dataSource: CachingRepositoryDataSource[Seq[TeamRepositories]]
+//  import TeamRepositoryWrapper._
+
+//  protected def ciUrlTemplates: UrlTemplates
+
+//  protected def dataSource: CachingRepositoryDataSource[Seq[TeamRepositories]]
 
   implicit val environmentFormats = Json.format[Link]
   implicit val linkFormats = Json.format[Environment]
   implicit val serviceFormats = Json.format[RepositoryDetails]
 
-  val CacheTimestampHeaderName = "X-Cache-Timestamp"
+//  val CacheTimestampHeaderName = "X-Cache-Timestamp"
 
   private def format(dateTime: LocalDateTime): String = {
     DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.of(dateTime, ZoneId.of("GMT")))

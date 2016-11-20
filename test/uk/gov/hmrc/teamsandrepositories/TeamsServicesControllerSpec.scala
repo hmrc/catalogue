@@ -22,7 +22,8 @@ import java.util.Date
 import org.mockito.Mockito._
 import org.scalatest.OptionValues
 import org.scalatest.mock.MockitoSugar
-import org.scalatestplus.play.PlaySpec
+import org.scalatestplus.play.{OneAppPerSuite, PlaySpec}
+import play.api.Application
 import play.api.libs.json._
 import play.api.mvc.{AnyContentAsEmpty, Results}
 import play.api.test.FakeRequest
@@ -31,7 +32,7 @@ import uk.gov.hmrc.teamsandrepositories.config.{UrlTemplate, UrlTemplates}
 
 import scala.concurrent.Future
 
-class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Results with OptionValues {
+class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Results with OptionValues with OneAppPerSuite {
 
   val timestamp = LocalDateTime.of(2016, 4, 5, 12, 57, 10)
 
@@ -50,14 +51,27 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
   private val lastActiveDateForLib2 = 50
 
 
+  import play.api.inject.bind
+  import play.api.inject.guice.GuiceApplicationBuilder
+
+
+//  val mockDataLoader = mock[DataLoader]
+  val mockDataLoader = DataLoader(() => Future.successful(Seq(TeamRepositories("teamA", Nil))))
+
+
+
+
+  implicit override lazy val app: Application =
+    new GuiceApplicationBuilder().overrides(bind[DataLoader].toInstance(mockDataLoader)).build
+
   def controllerWithData(data: CachedResult[Seq[TeamRepositories]], listOfReposToIgnore: List[String] = List.empty[String]): TeamsRepositoriesController = {
     val fakeDataSource = mock[CachingRepositoryDataSource[Seq[TeamRepositories]]]
     when(fakeDataSource.getCachedTeamRepoMapping).thenReturn(Future.successful(data))
 
-    new TeamsRepositoriesController {
-      override def dataSource = fakeDataSource
+    new TeamsRepositoriesController(DataLoader(() => Future.successful(Seq.empty[TeamRepositories]))) {
+      override val dataSource = fakeDataSource
 
-      override def ciUrlTemplates = new UrlTemplates(
+      override val ciUrlTemplates = new UrlTemplates(
         Seq(new UrlTemplate("closed", "closed", "$name")),
         Seq(new UrlTemplate("open", "open", "$name")),
         Map(
