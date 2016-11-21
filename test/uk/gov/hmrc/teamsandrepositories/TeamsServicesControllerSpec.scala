@@ -23,12 +23,12 @@ import org.mockito.Mockito._
 import org.scalatest.OptionValues
 import org.scalatest.mock.MockitoSugar
 import org.scalatestplus.play.{OneAppPerSuite, OneServerPerSuite, PlaySpec}
-import play.api.Application
+import play.api.{Application, Configuration}
 import play.api.libs.json._
 import play.api.mvc.{AnyContentAsEmpty, Results}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import uk.gov.hmrc.teamsandrepositories.config.{UrlTemplate, UrlTemplates}
+import uk.gov.hmrc.teamsandrepositories.config.{UrlTemplate, UrlTemplates, UrlTemplatesProvider}
 
 import scala.concurrent.Future
 
@@ -55,32 +55,34 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
   import play.api.inject.guice.GuiceApplicationBuilder
 
 
-//  val mockDataLoader = mock[DataLoader]
-  val mockDataLoader = DataLoader(() => Future.successful(Seq(TeamRepositories("teamA", Nil))))
-
-
+  val mockDataLoader = mock[DataLoader]
+  val mockUrlTemplateProvider = mock[UrlTemplatesProvider]
+  val mockConfiguration = mock[Configuration]
 
 
   implicit override lazy val app: Application =
-    new GuiceApplicationBuilder().overrides(bind[DataLoader].toInstance(mockDataLoader)).build
+    new GuiceApplicationBuilder().build
 
-  def controllerWithData(data: CachedResult[Seq[TeamRepositories]], listOfReposToIgnore: List[String] = List.empty[String]): TeamsRepositoriesController = {
+  def controllerWithData(cachedResult: CachedResult[Seq[TeamRepositories]], listOfReposToIgnore: List[String] = List.empty[String]): TeamsRepositoriesController = {
+
+    import scala.collection.JavaConverters._
     val fakeDataSource = mock[CachingRepositoryDataSource[Seq[TeamRepositories]]]
-    when(fakeDataSource.getCachedTeamRepoMapping).thenReturn(Future.successful(data))
+    when(fakeDataSource.getCachedTeamRepoMapping).thenReturn(Future.successful(cachedResult))
 
-    new TeamsRepositoriesController(DataLoader(() => Future.successful(Seq.empty[TeamRepositories]))) {
-      override val dataSource = fakeDataSource
+    when(mockConfiguration.getStringList("shared.repositories")).thenReturn(Some(listOfReposToIgnore.asJava))
+    when(mockDataLoader.load).thenReturn(() => Future.successful(cachedResult.data))
+    when(mockUrlTemplateProvider.ciUrlTemplates).thenReturn(new UrlTemplates(
+      Seq(new UrlTemplate("closed", "closed", "$name")),
+      Seq(new UrlTemplate("open", "open", "$name")),
+      Map(
+        "env1" -> Seq(
+          new UrlTemplate("log1", "log 1", "$name"),
+          new UrlTemplate("mon1", "mon 1", "$name")),
+        "env2" -> Seq(
+          new UrlTemplate("log1", "log 1", "$name"))
+      )))
 
-      override val ciUrlTemplates = new UrlTemplates(
-        Seq(new UrlTemplate("closed", "closed", "$name")),
-        Seq(new UrlTemplate("open", "open", "$name")),
-        Map(
-          "env1" -> Seq(
-            new UrlTemplate("log1", "log 1", "$name"),
-            new UrlTemplate("mon1", "mon 1", "$name")),
-          "env2" -> Seq(
-            new UrlTemplate("log1", "log 1", "$name"))
-        ))
+    new TeamsRepositoriesController(mockDataLoader, mockUrlTemplateProvider, mockConfiguration) {
 
       override val repositoriesToIgnore = listOfReposToIgnore
     }

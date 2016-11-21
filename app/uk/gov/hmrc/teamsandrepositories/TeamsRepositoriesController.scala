@@ -98,17 +98,9 @@ class DataLoader @Inject() (githubConfig: GithubConfig) {
   private val enterpriseTeamsRepositoryDataSource: RepositoryDataSource =
     new GithubV3RepositoryDataSource(githubConfig, gitApiEnterpriseClient, isInternal = true)
 
-
-
-  ////
   private val gitOpenClient = GithubApiClient(githubConfig.githubApiOpenConfig.apiUrl, githubConfig.githubApiOpenConfig.key)
   private val openTeamsRepositoryDataSource: RepositoryDataSource =
     new GithubV3RepositoryDataSource(githubConfig, gitOpenClient, isInternal = false)
-  /////
-
-
-
-
 
   def load: () => Future[Seq[TeamRepositories]] = new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)).getTeamRepoMapping _
 }
