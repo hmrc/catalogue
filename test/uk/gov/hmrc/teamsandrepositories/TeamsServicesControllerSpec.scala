@@ -70,7 +70,7 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
     when(fakeDataSource.getCachedTeamRepoMapping).thenReturn(Future.successful(cachedResult))
 
     when(mockConfiguration.getStringList("shared.repositories")).thenReturn(Some(listOfReposToIgnore.asJava))
-    when(mockDataLoader.load).thenReturn(() => Future.successful(cachedResult.data))
+    when(mockDataLoader.cachedData).thenReturn(Future.successful(cachedResult))
     when(mockUrlTemplateProvider.ciUrlTemplates).thenReturn(new UrlTemplates(
       Seq(new UrlTemplate("closed", "closed", "$name")),
       Seq(new UrlTemplate("open", "open", "$name")),

@@ -102,22 +102,28 @@ class DataLoader @Inject() (githubConfig: GithubConfig) {
   private val openTeamsRepositoryDataSource: RepositoryDataSource =
     new GithubV3RepositoryDataSource(githubConfig, gitOpenClient, isInternal = false)
 
-  def load: () => Future[Seq[TeamRepositories]] = new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)).getTeamRepoMapping _
+  private def load: () => Future[Seq[TeamRepositories]] = new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)).getTeamRepoMapping _
+
+  private val cachedDataSource = new CachingRepositoryDataSource[Seq[TeamRepositories]](
+    Akka.system(), CacheConfig,
+    load,
+    LocalDateTime.now
+  )
+
+
+  def cachedData: Future[CachedResult[Seq[TeamRepositories]]] = cachedDataSource.getCachedTeamRepoMapping
+
+  def reload(): Unit ={
+    cachedDataSource.reload()
+  }
+
+
 }
 
 
-class TeamsRepositoriesController @Inject()(theDataLoader: DataLoader, urlTemplatesProvider: UrlTemplatesProvider, configuration:Configuration) extends BaseController {
+class TeamsRepositoriesController @Inject()(dataLoader: DataLoader, urlTemplatesProvider: UrlTemplatesProvider, configuration:Configuration) extends BaseController {
 
   import TeamRepositoryWrapper._
-
-
-  //  protected def ciUrlTemplates: UrlTemplates
-
-  //  protected def dataSource: CachingRepositoryDataSource[Seq[TeamRepositories]]
-
-  //  implicit val environmentFormats = Json.format[Link]
-  //  implicit val linkFormats = Json.format[Environment]
-  //  implicit val serviceFormats = Json.format[RepositoryDetails]
 
   val CacheTimestampHeaderName = "X-Cache-Timestamp"
 
@@ -126,36 +132,17 @@ class TeamsRepositoriesController @Inject()(theDataLoader: DataLoader, urlTempla
   val repositoriesToIgnore: List[String] = configuration.getStringList("shared.repositories").fold(List.empty[String])(_.asScala.toList)
 
 
-  //  private def dataLoader: () => Future[Seq[TeamRepositories]] = new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)).getTeamRepoMapping _
-
-  protected val dataSource: CachingRepositoryDataSource[Seq[TeamRepositories]] = new CachingRepositoryDataSource[Seq[TeamRepositories]](
-    Akka.system(), CacheConfig,
-    theDataLoader.load,
-    LocalDateTime.now
-  )
-
-
-  //  val repositoriesToIgnore: List[String]
-
-
-  //  import TeamRepositoryWrapper._
-
-  //  protected def ciUrlTemplates: UrlTemplates
-
-  //  protected def dataSource: CachingRepositoryDataSource[Seq[TeamRepositories]]
 
   implicit val environmentFormats = Json.format[Link]
   implicit val linkFormats = Json.format[Environment]
   implicit val serviceFormats = Json.format[RepositoryDetails]
-
-  //  val CacheTimestampHeaderName = "X-Cache-Timestamp"
 
   private def format(dateTime: LocalDateTime): String = {
     DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.of(dateTime, ZoneId.of("GMT")))
   }
 
   def repositoryDetails(name: String) = Action.async { implicit request =>
-    dataSource.getCachedTeamRepoMapping.map { cachedTeams =>
+    dataLoader.cachedData.map { cachedTeams =>
       (cachedTeams.data.findRepositoryDetails(name, urlTemplatesProvider.ciUrlTemplates) match {
         case None => NotFound
         case Some(x: RepositoryDetails) => Results.Ok(Json.toJson(x))
@@ -164,7 +151,7 @@ class TeamsRepositoriesController @Inject()(theDataLoader: DataLoader, urlTempla
   }
 
   def services() = Action.async { implicit request =>
-    dataSource.getCachedTeamRepoMapping.map { (cachedTeams: CachedResult[Seq[TeamRepositories]]) =>
+    dataLoader.cachedData.map { (cachedTeams: CachedResult[Seq[TeamRepositories]]) =>
       Ok(determineServicesResponse(request, cachedTeams.data))
         .withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
     }
@@ -181,7 +168,7 @@ class TeamsRepositoriesController @Inject()(theDataLoader: DataLoader, urlTempla
     else Json.toJson(data.asServiceRepoDetailsList)
 
   def libraries() = Action.async { implicit request =>
-    dataSource.getCachedTeamRepoMapping.map { cachedTeams =>
+    dataLoader.cachedData.map { cachedTeams =>
       Ok(determineLibrariesResponse(request, cachedTeams.data))
         .withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
     }
@@ -195,14 +182,14 @@ class TeamsRepositoriesController @Inject()(theDataLoader: DataLoader, urlTempla
   }
 
   def teams() = Action.async { implicit request =>
-    dataSource.getCachedTeamRepoMapping.map { cachedTeams =>
+    dataLoader.cachedData.map { cachedTeams =>
       Results.Ok(Json.toJson(cachedTeams.data.asTeamList(repositoriesToIgnore)))
         .withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
     }
   }
 
   def repositoriesByTeam(teamName: String) = Action.async { implicit request =>
-    dataSource.getCachedTeamRepoMapping.map { cachedTeams =>
+    dataLoader.cachedData.map { cachedTeams =>
       (cachedTeams.data.asTeamRepositoryNameList(teamName) match {
         case None => NotFound
         case Some(x) => Results.Ok(Json.toJson(x.map { case (t, v) => (t.toString, v) }))
@@ -212,7 +199,7 @@ class TeamsRepositoriesController @Inject()(theDataLoader: DataLoader, urlTempla
 
 
   def repositoriesWithDetailsByTeam(teamName: String) = Action.async { implicit request =>
-    dataSource.getCachedTeamRepoMapping.map { cachedTeams =>
+    dataLoader.cachedData.map { cachedTeams =>
       (cachedTeams.data.asTeamRepositoryDetailsList(teamName, repositoriesToIgnore) match {
         case None => NotFound
         case Some(x) => Results.Ok(Json.toJson(x))
@@ -221,7 +208,7 @@ class TeamsRepositoriesController @Inject()(theDataLoader: DataLoader, urlTempla
   }
 
   def reloadCache() = Action { implicit request =>
-    dataSource.reload()
+    dataLoader.reload()
     Ok("Cache reload triggered successfully")
   }
 }
