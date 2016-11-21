@@ -87,11 +87,11 @@ object BlockingIOExecutionContext {
   implicit val executionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(32))
 }
 
-//object TeamsRepositoriesController extends TeamsRepositoriesController
-
 
 @Singleton
-class DataLoader @Inject() (githubConfig: GithubConfig) {
+class DataLoader @Inject()(configuration: Configuration, githubConfig: GithubConfig) {
+
+  private val githubIntegrationEnabled = configuration.getBoolean("github.integration.enabled").getOrElse(true)
 
   private val gitApiEnterpriseClient = GithubApiClient(githubConfig.githubApiEnterpriseConfig.apiUrl, githubConfig.githubApiEnterpriseConfig.key)
 
@@ -104,16 +104,22 @@ class DataLoader @Inject() (githubConfig: GithubConfig) {
 
   private def load: () => Future[Seq[TeamRepositories]] = new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)).getTeamRepoMapping _
 
-  private val cachedDataSource = new CachingRepositoryDataSource[Seq[TeamRepositories]](
-    Akka.system(), CacheConfig,
-    load,
-    LocalDateTime.now
-  )
+  private val cachedDataSource =
+    if (githubIntegrationEnabled) {
+      new MemoryCachedRepositoryDataSource[Seq[TeamRepositories]](
+        Akka.system(), CacheConfig,
+        load,
+        LocalDateTime.now
+      )
+    } else {
+      val cacheFilename = configuration.getString("cacheFilename").getOrElse(throw new RuntimeException("cacheFilename is not specified for off-line (dev) usage"))
+      new FileCachedRepositoryDataSource(cacheFilename)
+    }
 
 
   def cachedData: Future[CachedResult[Seq[TeamRepositories]]] = cachedDataSource.getCachedTeamRepoMapping
 
-  def reload(): Unit ={
+  def reload(): Unit = {
     cachedDataSource.reload()
   }
 
@@ -121,7 +127,7 @@ class DataLoader @Inject() (githubConfig: GithubConfig) {
 }
 
 
-class TeamsRepositoriesController @Inject()(dataLoader: DataLoader, urlTemplatesProvider: UrlTemplatesProvider, configuration:Configuration) extends BaseController {
+class TeamsRepositoriesController @Inject()(dataLoader: DataLoader, urlTemplatesProvider: UrlTemplatesProvider, configuration: Configuration) extends BaseController {
 
   import TeamRepositoryWrapper._
 
@@ -130,7 +136,6 @@ class TeamsRepositoriesController @Inject()(dataLoader: DataLoader, urlTemplates
   import scala.collection.JavaConverters._
 
   val repositoriesToIgnore: List[String] = configuration.getStringList("shared.repositories").fold(List.empty[String])(_.asScala.toList)
-
 
 
   implicit val environmentFormats = Json.format[Link]
@@ -211,4 +216,26 @@ class TeamsRepositoriesController @Inject()(dataLoader: DataLoader, urlTemplates
     dataLoader.reload()
     Ok("Cache reload triggered successfully")
   }
+
+  def save = Action.async { implicit request =>
+    val file: Option[String] = request.getQueryString("file")
+
+    file match {
+      case Some(filename) =>
+        dataLoader.cachedData.map { cachedTeams =>
+          import java.io._
+          implicit val repositoryFormats = Json.format[Repository]
+          implicit val teamRepositoryFormats = Json.format[TeamRepositories]
+          val pw = new PrintWriter(new File(filename))
+          pw.write(Json.stringify(Json.toJson(cachedTeams.data)))
+          pw.close()
+
+          Ok(s"Saved $file").withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
+        }
+      case None =>
+        Future(NotAcceptable(s"no file specified").withHeaders(CacheTimestampHeaderName -> format(LocalDateTime.now())))
+    }
+
+  }
+
 }

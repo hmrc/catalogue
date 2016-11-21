@@ -22,12 +22,12 @@ import java.util.Date
 import org.mockito.Mockito._
 import org.scalatest.OptionValues
 import org.scalatest.mock.MockitoSugar
-import org.scalatestplus.play.{OneAppPerSuite, OneServerPerSuite, PlaySpec}
-import play.api.{Application, Configuration}
+import org.scalatestplus.play.{OneServerPerSuite, PlaySpec}
 import play.api.libs.json._
 import play.api.mvc.{AnyContentAsEmpty, Results}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
+import play.api.{Application, Configuration}
 import uk.gov.hmrc.teamsandrepositories.config.{UrlTemplate, UrlTemplates, UrlTemplatesProvider}
 
 import scala.concurrent.Future
@@ -51,7 +51,6 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
   private val lastActiveDateForLib2 = 50
 
 
-  import play.api.inject.bind
   import play.api.inject.guice.GuiceApplicationBuilder
 
 
@@ -66,7 +65,7 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
   def controllerWithData(cachedResult: CachedResult[Seq[TeamRepositories]], listOfReposToIgnore: List[String] = List.empty[String]): TeamsRepositoriesController = {
 
     import scala.collection.JavaConverters._
-    val fakeDataSource = mock[CachingRepositoryDataSource[Seq[TeamRepositories]]]
+    val fakeDataSource = mock[CachedRepositoryDataSource[Seq[TeamRepositories]]]
     when(fakeDataSource.getCachedTeamRepoMapping).thenReturn(Future.successful(cachedResult))
 
     when(mockConfiguration.getStringList("shared.repositories")).thenReturn(Some(listOfReposToIgnore.asJava))
