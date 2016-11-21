@@ -30,8 +30,9 @@ trait MicroService {
       parallelExecution in Test := false,
       fork in Test := false,
       targetJvm := "jvm-1.8",
-      retrieveManaged := true
-//      ,routesGenerator := StaticRoutesGenerator
+      retrieveManaged := true,
+      routesGenerator := StaticRoutesGenerator
+//      routesGenerator := InjectedRoutesGenerator
     )
     .disablePlugins(sbt.plugins.JUnitXmlReportPlugin)
     .settings(resolvers ++= Seq(Resolver.bintrayRepo("hmrc", "releases"), Resolver.jcenterRepo))

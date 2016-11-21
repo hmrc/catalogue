@@ -22,7 +22,7 @@ import java.util.Date
 import org.mockito.Mockito._
 import org.scalatest.OptionValues
 import org.scalatest.mock.MockitoSugar
-import org.scalatestplus.play.{OneAppPerSuite, PlaySpec}
+import org.scalatestplus.play.{OneAppPerSuite, OneServerPerSuite, PlaySpec}
 import play.api.Application
 import play.api.libs.json._
 import play.api.mvc.{AnyContentAsEmpty, Results}
@@ -32,7 +32,7 @@ import uk.gov.hmrc.teamsandrepositories.config.{UrlTemplate, UrlTemplates}
 
 import scala.concurrent.Future
 
-class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Results with OptionValues with OneAppPerSuite {
+class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Results with OptionValues with OneServerPerSuite {
 
   val timestamp = LocalDateTime.of(2016, 4, 5, 12, 57, 10)
 
