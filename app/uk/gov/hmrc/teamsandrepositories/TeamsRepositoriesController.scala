@@ -107,7 +107,7 @@ class DataLoader @Inject()(configuration: Configuration, githubConfig: GithubCon
   private val cachedDataSource =
     if (githubIntegrationEnabled) {
       new MemoryCachedRepositoryDataSource[Seq[TeamRepositories]](
-        Akka.system(), CacheConfig,
+        CacheConfig,
         load,
         LocalDateTime.now
       )

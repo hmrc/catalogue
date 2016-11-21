@@ -3,20 +3,24 @@ package uk.gov.hmrc.teamsandrepositories
 import java.time.LocalDateTime
 
 import akka.actor.ActorSystem
+import com.google.inject.Singleton
 import play.Logger
 import play.api.libs.json.Json
+import play.libs.Akka
 import uk.gov.hmrc.teamsandrepositories.config.CacheConfig
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.io.Source
 import scala.util.{Failure, Success, Try}
 
+
 trait CachedRepositoryDataSource[T] {
   def getCachedTeamRepoMapping: Future[CachedResult[T]]
   def reload(): Unit
 }
 
-class MemoryCachedRepositoryDataSource[T](akkaSystem: ActorSystem,
+
+class MemoryCachedRepositoryDataSource[T](
                                           cacheConfig: CacheConfig,
                                           dataSource: () => Future[T],
                                           timeStamp: () => LocalDateTime) extends CachedRepositoryDataSource[T] {
@@ -25,6 +29,7 @@ class MemoryCachedRepositoryDataSource[T](akkaSystem: ActorSystem,
   private val initialPromise = Promise[CachedResult[T]]()
 
   import ExecutionContext.Implicits._
+
 
   dataUpdate()
 
@@ -48,7 +53,7 @@ class MemoryCachedRepositoryDataSource[T](akkaSystem: ActorSystem,
   }
 
   Logger.info(s"Initialising cache reload every ${cacheConfig.teamsCacheDuration}")
-  akkaSystem.scheduler.schedule(cacheConfig.teamsCacheDuration, cacheConfig.teamsCacheDuration) {
+  Akka.system().scheduler.schedule(cacheConfig.teamsCacheDuration, cacheConfig.teamsCacheDuration) {
     Logger.info("Scheduled teams repository cache reload triggered")
     dataUpdate()
   }
