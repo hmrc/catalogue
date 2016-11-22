@@ -1,13 +1,14 @@
+package uk.gov.hmrc.teamsandrepositories
+
 import java.time.LocalDateTime
 
-import com.google.inject.{AbstractModule, TypeLiteral}
 import com.google.inject.name.Names
-import play.api.{Configuration, Environment}
+import com.google.inject.{AbstractModule, Inject, TypeLiteral}
+import play.api.Configuration
 import uk.gov.hmrc.githubclient.GithubApiClient
-import uk.gov.hmrc.teamsandrepositories._
 import uk.gov.hmrc.teamsandrepositories.config.{CacheConfig, GithubConfig}
 
-class Module(environment: Environment, configuration: Configuration) extends AbstractModule {
+class Module (environment: play.api.Environment, configuration: Configuration) extends AbstractModule {
 
   override def configure(): Unit = {
     val useMemoryDataCache = configuration.getBoolean("github.integration.enabled").getOrElse(false)

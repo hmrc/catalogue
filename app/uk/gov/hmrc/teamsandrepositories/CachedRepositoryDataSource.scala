@@ -2,9 +2,6 @@ package uk.gov.hmrc.teamsandrepositories
 
 import java.time.LocalDateTime
 
-import akka.actor.ActorSystem
-import com.google.inject.name.Named
-import com.google.inject.{ImplementedBy, Singleton}
 import play.Logger
 import play.api.libs.json.Json
 import play.libs.Akka
@@ -81,7 +78,7 @@ class FileCachedRepositoryDataSource(cacheFilename: String) extends CachedReposi
   implicit val repositoryFormats = Json.format[Repository]
   implicit val teamRepositoryFormats = Json.format[TeamRepositories]
 
-  private var cachedData = loadCacheData
+  lazy val cachedData = loadCacheData
 
   private def loadCacheData: Option[CachedResult[Seq[TeamRepositories]]] = {
     Try(Json.parse(Source.fromFile(cacheFilename).mkString)
@@ -97,5 +94,5 @@ class FileCachedRepositoryDataSource(cacheFilename: String) extends CachedReposi
     Future.successful(cachedData.get)
   }
 
-  override def reload(): Unit = cachedData = loadCacheData
+  override def reload(): Unit = ???
 }
