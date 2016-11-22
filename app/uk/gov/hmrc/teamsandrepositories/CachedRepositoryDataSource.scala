@@ -48,10 +48,15 @@ class MemoryCachedRepositoryDataSource[T](cacheConfig: CacheConfig,
     dataUpdate()
   }
 
-  Logger.info(s"Initialising cache reload every ${cacheConfig.teamsCacheDuration}")
-  Akka.system().scheduler.schedule(cacheConfig.teamsCacheDuration, cacheConfig.teamsCacheDuration) {
-    Logger.info("Scheduled teams repository cache reload triggered")
-    dataUpdate()
+  try {
+    Logger.info(s"Initialising cache reload every ${cacheConfig.teamsCacheDuration}")
+    Akka.system().scheduler.schedule(cacheConfig.teamsCacheDuration, cacheConfig.teamsCacheDuration) {
+      Logger.info("Scheduled teams repository cache reload triggered")
+      dataUpdate()
+    }
+  } catch {
+    case e =>
+      e.printStackTrace()
   }
 
   private def dataUpdate() {

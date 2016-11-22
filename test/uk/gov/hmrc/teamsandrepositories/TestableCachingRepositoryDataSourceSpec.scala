@@ -19,27 +19,29 @@ package uk.gov.hmrc.teamsandrepositories
 import java.time.LocalDateTime
 import java.util.concurrent.TimeUnit
 
-import akka.actor.ActorSystem
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
+import org.scalatest.mock.MockitoSugar
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
+import org.scalatestplus.play.OneAppPerTest
+import play.api.Configuration
 import uk.gov.hmrc.teamsandrepositories.config.CacheConfig
 
+import scala.concurrent.duration.{FiniteDuration, _}
 import scala.concurrent.{Future, Promise}
-import scala.concurrent.duration.FiniteDuration
 import scala.util.Success
-import scala.concurrent.duration._
 
 
-class TestableCachingRepositoryDataSourceSpec extends WordSpec with BeforeAndAfterAll with ScalaFutures with Matchers with DefaultPatienceConfig with Eventually {
+class TestableCachingRepositoryDataSourceSpec extends WordSpec
+  with BeforeAndAfterAll
+  with ScalaFutures
+  with Matchers
+  with DefaultPatienceConfig
+  with MockitoSugar
+  with Eventually
+  with OneAppPerTest {
 
-  val system = ActorSystem.create()
 
-  override def afterAll(): Unit = {
-    system.shutdown()
-  }
-
-
-  val testConfig = new CacheConfig() {
+  val testConfig = new CacheConfig(mock[Configuration]) {
     override def teamsCacheDuration: FiniteDuration = FiniteDuration(100, TimeUnit.SECONDS)
   }
 
@@ -121,7 +123,7 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec with BeforeAndAft
 
     "populate the cache from the data source and retain it until the configured expiry time" in {
 
-      val testConfig = new CacheConfig() {
+      val testConfig = new CacheConfig(mock[Configuration]) {
         override def teamsCacheDuration: FiniteDuration = 100 millis
       }
 

@@ -20,15 +20,6 @@ import com.google.inject.{Inject, Singleton}
 import play.api.Configuration
 import uk.gov.hmrc.githubclient.GitApiConfig
 
-//class GithubConfigProvider @Inje {
-//  def githubConfig: GithubConfig = new GithubConfig()
-//}
-
-//trait GithubConfig {
-//  def hiddenRepositories: List[String]
-//  def hiddenTeams: List[String]
-//}
-
 
 @Singleton
 class GithubConfig @Inject() (configuration: Configuration) {

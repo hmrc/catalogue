@@ -88,6 +88,13 @@ object BlockingIOExecutionContext {
 }
 
 
+@Singleton
+class DataLoader @Inject() (cachedRepositoryDataSource: CachedRepositoryDataSource[Seq[TeamRepositories]]) {
+  def getCachedTeamRepoMapping = cachedRepositoryDataSource.getCachedTeamRepoMapping
+  def reload = cachedRepositoryDataSource.reload()
+}
+
+
 //@Singleton
 //class DataLoader @Inject()(configuration: Configuration, githubConfig: GithubConfig) {
 //

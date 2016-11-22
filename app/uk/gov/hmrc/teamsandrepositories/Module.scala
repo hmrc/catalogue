@@ -15,7 +15,9 @@ class Module (environment: play.api.Environment, configuration: Configuration) e
     if (useMemoryDataCache) {
       val githubConfig = new GithubConfig(configuration)
 
-      val gitApiEnterpriseClient = GithubApiClient(githubConfig.githubApiEnterpriseConfig.apiUrl, githubConfig.githubApiEnterpriseConfig.key)
+      val url = githubConfig.githubApiEnterpriseConfig.apiUrl
+
+      val gitApiEnterpriseClient = GithubApiClient(url, githubConfig.githubApiEnterpriseConfig.key)
 
       val enterpriseTeamsRepositoryDataSource: RepositoryDataSource =
         new GithubV3RepositoryDataSource(githubConfig, gitApiEnterpriseClient, isInternal = true)
@@ -25,14 +27,12 @@ class Module (environment: play.api.Environment, configuration: Configuration) e
         new GithubV3RepositoryDataSource(githubConfig, gitOpenClient, isInternal = false)
 
       val mem = new MemoryCachedRepositoryDataSource[Seq[TeamRepositories]](
-        CacheConfig,
+        new CacheConfig(configuration),
         new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)).getTeamRepoMapping _,
         LocalDateTime.now
       )
 
-      bind(new TypeLiteral[CachedRepositoryDataSource[Seq[TeamRepositories]]]{})
-        .annotatedWith(Names.named("memoryCachedDataSource"))
-        .toInstance(mem)
+      bind(new TypeLiteral[CachedRepositoryDataSource[Seq[TeamRepositories]]]{}).toInstance(mem)
     } else {
       val cacheFilename = configuration.getString("cacheFilename").getOrElse(throw new RuntimeException("cacheFilename is not specified for off-line (dev) usage"))
       val file = new FileCachedRepositoryDataSource(cacheFilename)
