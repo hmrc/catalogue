@@ -47,7 +47,7 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec
 
   def withCache[T](dataLoader:() => Future[T], testConfig:CacheConfig = testConfig)(block: (MemoryCachedRepositoryDataSource[T]) => Unit): Unit ={
 //    val cache = new MemoryCachedRepositoryDataSource[T](testConfig, dataLoader, () => LocalDateTime.now())
-    val cache = new MemoryCachedRepositoryDataSource[T](dataLoader, () => LocalDateTime.now())
+    val cache = new MemoryCachedRepositoryDataSource(dataLoader, () => LocalDateTime.now())
     block(cache)
   }
 

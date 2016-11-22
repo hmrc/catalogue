@@ -136,7 +136,7 @@ class DataLoader @Inject() (cachedRepositoryDataSource: CachedRepositoryDataSour
 //}
 
 
-class TeamsRepositoriesController @Inject()(dataLoader: CachedRepositoryDataSource[Seq[TeamRepositories]],
+class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDataSource[Seq[TeamRepositories]],
                                             cacheConfig: CacheConfig,
                                             urlTemplatesProvider: UrlTemplatesProvider,
                                             configuration: Configuration,

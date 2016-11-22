@@ -2,6 +2,7 @@ package uk.gov.hmrc.teamsandrepositories
 
 import java.time.LocalDateTime
 
+import com.google.inject.{Inject, Singleton}
 import play.Logger
 import play.api.libs.json.Json
 
@@ -10,14 +11,15 @@ import scala.io.Source
 import scala.util.{Failure, Success, Try}
 
 
-
 trait CachedRepositoryDataSource[T] {
   def getCachedTeamRepoMapping: Future[CachedResult[T]]
+
   def reload(): Unit
 }
 
-class MemoryCachedRepositoryDataSource[T](dataSource: () => Future[T],
-                                          timeStamp: () => LocalDateTime) extends CachedRepositoryDataSource[T] {
+@Singleton
+class MemoryCachedRepositoryDataSource[T] @Inject()(dataSource: () => Future[T],
+                                                 timeStamp: () => LocalDateTime) /*  extends CachedRepositoryDataSource[T] */ {
 
   private var cachedData: Option[CachedResult[T]] = None
   private val initialPromise = Promise[CachedResult[T]]()
@@ -30,7 +32,9 @@ class MemoryCachedRepositoryDataSource[T](dataSource: () => Future[T],
     dataSource().map { d => {
       val stamp = timeStamp()
       Logger.debug(s"Cache reloaded at $stamp")
-      new CachedResult(d, stamp) }}
+      new CachedResult(d, stamp)
+    }
+    }
 
   def getCachedTeamRepoMapping: Future[CachedResult[T]] = {
     Logger.info(s"cachedData is available = ${cachedData.isDefined}")
@@ -45,16 +49,16 @@ class MemoryCachedRepositoryDataSource[T](dataSource: () => Future[T],
     fetchData()
   }
 
-//  try {
-//    Logger.info(s"Initialising cache reload every ${cacheConfig.teamsCacheDuration}")
-//    Akka.system().scheduler.schedule(cacheConfig.teamsCacheDuration, cacheConfig.teamsCacheDuration) {
-//      Logger.info("Scheduled teams repository cache reload triggered")
-//      fetchData()
-//    }
-//  } catch {
-//    case e =>
-//      e.printStackTrace()
-//  }
+  //  try {
+  //    Logger.info(s"Initialising cache reload every ${cacheConfig.teamsCacheDuration}")
+  //    Akka.system().scheduler.schedule(cacheConfig.teamsCacheDuration, cacheConfig.teamsCacheDuration) {
+  //      Logger.info("Scheduled teams repository cache reload triggered")
+  //      fetchData()
+  //    }
+  //  } catch {
+  //    case e =>
+  //      e.printStackTrace()
+  //  }
 
   private def fetchData() {
 
