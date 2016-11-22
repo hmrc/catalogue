@@ -16,19 +16,15 @@
 
 package uk.gov.hmrc.teamsandrepositories
 
-import java.time.LocalDateTime
-
-import akka.actor.ActorSystem
 import com.google.inject.{Inject, Singleton}
 import play.Logger
 import play.api.libs.json._
 import uk.gov.hmrc.githubclient.{GhOrganisation, GhRepository, GhTeam, GithubApiClient}
 import uk.gov.hmrc.teamsandrepositories.RepoType._
 import uk.gov.hmrc.teamsandrepositories.RetryStrategy._
-import uk.gov.hmrc.teamsandrepositories.config.{CacheConfig, GithubConfig}
+import uk.gov.hmrc.teamsandrepositories.config.GithubConfig
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.util.{Failure, Success}
+import scala.concurrent.Future
 
 
 case class TeamRepositories(teamName: String, repositories: List[Repository]) {

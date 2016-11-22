@@ -88,46 +88,46 @@ object BlockingIOExecutionContext {
 }
 
 
-@Singleton
-class DataLoader @Inject()(configuration: Configuration, githubConfig: GithubConfig) {
+//@Singleton
+//class DataLoader @Inject()(configuration: Configuration, githubConfig: GithubConfig) {
+//
+//  private val githubIntegrationEnabled = configuration.getBoolean("github.integration.enabled").getOrElse(true)
+//
+//  private val gitApiEnterpriseClient = GithubApiClient(githubConfig.githubApiEnterpriseConfig.apiUrl, githubConfig.githubApiEnterpriseConfig.key)
+//
+//  private val enterpriseTeamsRepositoryDataSource: RepositoryDataSource =
+//    new GithubV3RepositoryDataSource(githubConfig, gitApiEnterpriseClient, isInternal = true)
+//
+//  private val gitOpenClient = GithubApiClient(githubConfig.githubApiOpenConfig.apiUrl, githubConfig.githubApiOpenConfig.key)
+//  private val openTeamsRepositoryDataSource: RepositoryDataSource =
+//    new GithubV3RepositoryDataSource(githubConfig, gitOpenClient, isInternal = false)
+//
+//  private def load: () => Future[Seq[TeamRepositories]] = new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)).getTeamRepoMapping _
+//
+//  private val cachedDataSource =
+//    if (githubIntegrationEnabled) {
+//      new MemoryCachedRepositoryDataSource[Seq[TeamRepositories]](
+//        CacheConfig,
+//        new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)).getTeamRepoMapping _,
+//        LocalDateTime.now
+//      )
+//    } else {
+//      val cacheFilename = configuration.getString("cacheFilename").getOrElse(throw new RuntimeException("cacheFilename is not specified for off-line (dev) usage"))
+//      new FileCachedRepositoryDataSource(cacheFilename)
+//    }
+//
+//
+//  def cachedData: Future[CachedResult[Seq[TeamRepositories]]] = cachedDataSource.getCachedTeamRepoMapping
+//
+//  def reload(): Unit = {
+//    cachedDataSource.reload()
+//  }
+//
+//
+//}
 
-  private val githubIntegrationEnabled = configuration.getBoolean("github.integration.enabled").getOrElse(true)
 
-  private val gitApiEnterpriseClient = GithubApiClient(githubConfig.githubApiEnterpriseConfig.apiUrl, githubConfig.githubApiEnterpriseConfig.key)
-
-  private val enterpriseTeamsRepositoryDataSource: RepositoryDataSource =
-    new GithubV3RepositoryDataSource(githubConfig, gitApiEnterpriseClient, isInternal = true)
-
-  private val gitOpenClient = GithubApiClient(githubConfig.githubApiOpenConfig.apiUrl, githubConfig.githubApiOpenConfig.key)
-  private val openTeamsRepositoryDataSource: RepositoryDataSource =
-    new GithubV3RepositoryDataSource(githubConfig, gitOpenClient, isInternal = false)
-
-  private def load: () => Future[Seq[TeamRepositories]] = new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)).getTeamRepoMapping _
-
-  private val cachedDataSource =
-    if (githubIntegrationEnabled) {
-      new MemoryCachedRepositoryDataSource[Seq[TeamRepositories]](
-        CacheConfig,
-        load,
-        LocalDateTime.now
-      )
-    } else {
-      val cacheFilename = configuration.getString("cacheFilename").getOrElse(throw new RuntimeException("cacheFilename is not specified for off-line (dev) usage"))
-      new FileCachedRepositoryDataSource(cacheFilename)
-    }
-
-
-  def cachedData: Future[CachedResult[Seq[TeamRepositories]]] = cachedDataSource.getCachedTeamRepoMapping
-
-  def reload(): Unit = {
-    cachedDataSource.reload()
-  }
-
-
-}
-
-
-class TeamsRepositoriesController @Inject()(dataLoader: DataLoader, urlTemplatesProvider: UrlTemplatesProvider, configuration: Configuration) extends BaseController {
+class TeamsRepositoriesController @Inject()(dataLoader: CachedRepositoryDataSource[Seq[TeamRepositories]], urlTemplatesProvider: UrlTemplatesProvider, configuration: Configuration) extends BaseController {
 
   import TeamRepositoryWrapper._
 
@@ -147,7 +147,7 @@ class TeamsRepositoriesController @Inject()(dataLoader: DataLoader, urlTemplates
   }
 
   def repositoryDetails(name: String) = Action.async { implicit request =>
-    dataLoader.cachedData.map { cachedTeams =>
+    dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
       (cachedTeams.data.findRepositoryDetails(name, urlTemplatesProvider.ciUrlTemplates) match {
         case None => NotFound
         case Some(x: RepositoryDetails) => Results.Ok(Json.toJson(x))
@@ -156,7 +156,7 @@ class TeamsRepositoriesController @Inject()(dataLoader: DataLoader, urlTemplates
   }
 
   def services() = Action.async { implicit request =>
-    dataLoader.cachedData.map { (cachedTeams: CachedResult[Seq[TeamRepositories]]) =>
+    dataLoader.getCachedTeamRepoMapping.map { (cachedTeams: CachedResult[Seq[TeamRepositories]]) =>
       Ok(determineServicesResponse(request, cachedTeams.data))
         .withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
     }
@@ -173,7 +173,7 @@ class TeamsRepositoriesController @Inject()(dataLoader: DataLoader, urlTemplates
     else Json.toJson(data.asServiceRepoDetailsList)
 
   def libraries() = Action.async { implicit request =>
-    dataLoader.cachedData.map { cachedTeams =>
+    dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
       Ok(determineLibrariesResponse(request, cachedTeams.data))
         .withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
     }
@@ -187,14 +187,14 @@ class TeamsRepositoriesController @Inject()(dataLoader: DataLoader, urlTemplates
   }
 
   def teams() = Action.async { implicit request =>
-    dataLoader.cachedData.map { cachedTeams =>
+    dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
       Results.Ok(Json.toJson(cachedTeams.data.asTeamList(repositoriesToIgnore)))
         .withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
     }
   }
 
   def repositoriesByTeam(teamName: String) = Action.async { implicit request =>
-    dataLoader.cachedData.map { cachedTeams =>
+    dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
       (cachedTeams.data.asTeamRepositoryNameList(teamName) match {
         case None => NotFound
         case Some(x) => Results.Ok(Json.toJson(x.map { case (t, v) => (t.toString, v) }))
@@ -204,7 +204,7 @@ class TeamsRepositoriesController @Inject()(dataLoader: DataLoader, urlTemplates
 
 
   def repositoriesWithDetailsByTeam(teamName: String) = Action.async { implicit request =>
-    dataLoader.cachedData.map { cachedTeams =>
+    dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
       (cachedTeams.data.asTeamRepositoryDetailsList(teamName, repositoriesToIgnore) match {
         case None => NotFound
         case Some(x) => Results.Ok(Json.toJson(x))
@@ -222,7 +222,7 @@ class TeamsRepositoriesController @Inject()(dataLoader: DataLoader, urlTemplates
 
     file match {
       case Some(filename) =>
-        dataLoader.cachedData.map { cachedTeams =>
+        dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
           import java.io._
           implicit val repositoryFormats = Json.format[Repository]
           implicit val teamRepositoryFormats = Json.format[TeamRepositories]

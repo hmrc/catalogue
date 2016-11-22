@@ -3,7 +3,8 @@ package uk.gov.hmrc.teamsandrepositories
 import java.time.LocalDateTime
 
 import akka.actor.ActorSystem
-import com.google.inject.Singleton
+import com.google.inject.name.Named
+import com.google.inject.{ImplementedBy, Singleton}
 import play.Logger
 import play.api.libs.json.Json
 import play.libs.Akka
@@ -14,14 +15,13 @@ import scala.io.Source
 import scala.util.{Failure, Success, Try}
 
 
+
 trait CachedRepositoryDataSource[T] {
   def getCachedTeamRepoMapping: Future[CachedResult[T]]
   def reload(): Unit
 }
 
-
-class MemoryCachedRepositoryDataSource[T](
-                                          cacheConfig: CacheConfig,
+class MemoryCachedRepositoryDataSource[T](cacheConfig: CacheConfig,
                                           dataSource: () => Future[T],
                                           timeStamp: () => LocalDateTime) extends CachedRepositoryDataSource[T] {
 
@@ -29,7 +29,6 @@ class MemoryCachedRepositoryDataSource[T](
   private val initialPromise = Promise[CachedResult[T]]()
 
   import ExecutionContext.Implicits._
-
 
   dataUpdate()
 
