@@ -49,17 +49,17 @@ class ModuleSpec
     "produce MemCache Data Source when github integration is enabled via the configuration" in {
 
       when(mockConfiguration.getMilliseconds("cache.teams.duration")).thenReturn(Some(10000l))
-
+//
       when(mockConfiguration.getBoolean("github.integration.enabled")).thenReturn(Some(true))
-      when(mockConfiguration.getString("github.open.api")).thenReturn(Some("http://github.open.api"))
-      when(mockConfiguration.getString("github.open.api.host")).thenReturn(Some("http://github.open.api"))
+      when(mockConfiguration.getString("github.open.api")).thenReturn(Some("http://something.open.api"))
+      when(mockConfiguration.getString("github.open.api.host")).thenReturn(Some("http://yyz.g1thub.c0m"))
       when(mockConfiguration.getString("github.open.api.user")).thenReturn(None)
       when(mockConfiguration.getString("github.open.api.key")).thenReturn(None)
 
       when(mockConfiguration.getString("github.enterprise.api")).thenReturn(Some("http://github.enterprise.api1"))
-      when(mockConfiguration.getString("github.enterprise.api.host")).thenReturn(Some("http://github.enterprise.api2"))
-      when(mockConfiguration.getString("github.enterprise.api.user")).thenReturn(Some("github.enterprise.api3"))
-      when(mockConfiguration.getString("github.enterprise.api.key")).thenReturn(Some("github.enterprise.api4"))
+      when(mockConfiguration.getString("github.enterprise.api.host")).thenReturn(Some("http://yyz.g1thub.c0m"))
+      when(mockConfiguration.getString("github.enterprise.api.user")).thenReturn(Some("something.enterprise.api3"))
+      when(mockConfiguration.getString("github.enterprise.api.key")).thenReturn(Some("something.enterprise.api4"))
       when(mockConfiguration.getString("github.hidden.repositories")).thenReturn(None)
       when(mockConfiguration.getString("github.hidden.teams")).thenReturn(None)
 

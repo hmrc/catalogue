@@ -4,8 +4,6 @@ import java.time.LocalDateTime
 
 import play.Logger
 import play.api.libs.json.Json
-import play.libs.Akka
-import uk.gov.hmrc.teamsandrepositories.config.CacheConfig
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.io.Source
@@ -18,8 +16,7 @@ trait CachedRepositoryDataSource[T] {
   def reload(): Unit
 }
 
-class MemoryCachedRepositoryDataSource[T](cacheConfig: CacheConfig,
-                                          dataSource: () => Future[T],
+class MemoryCachedRepositoryDataSource[T](dataSource: () => Future[T],
                                           timeStamp: () => LocalDateTime) extends CachedRepositoryDataSource[T] {
 
   private var cachedData: Option[CachedResult[T]] = None
@@ -27,9 +24,9 @@ class MemoryCachedRepositoryDataSource[T](cacheConfig: CacheConfig,
 
   import ExecutionContext.Implicits._
 
-  dataUpdate()
+  fetchData()
 
-  private def fromSource =
+  private def fromSource() =
     dataSource().map { d => {
       val stamp = timeStamp()
       Logger.debug(s"Cache reloaded at $stamp")
@@ -45,23 +42,23 @@ class MemoryCachedRepositoryDataSource[T](cacheConfig: CacheConfig,
 
   def reload() = {
     Logger.info(s"Manual teams repository cache reload triggered")
-    dataUpdate()
+    fetchData()
   }
 
-  try {
-    Logger.info(s"Initialising cache reload every ${cacheConfig.teamsCacheDuration}")
-    Akka.system().scheduler.schedule(cacheConfig.teamsCacheDuration, cacheConfig.teamsCacheDuration) {
-      Logger.info("Scheduled teams repository cache reload triggered")
-      dataUpdate()
-    }
-  } catch {
-    case e =>
-      e.printStackTrace()
-  }
+//  try {
+//    Logger.info(s"Initialising cache reload every ${cacheConfig.teamsCacheDuration}")
+//    Akka.system().scheduler.schedule(cacheConfig.teamsCacheDuration, cacheConfig.teamsCacheDuration) {
+//      Logger.info("Scheduled teams repository cache reload triggered")
+//      fetchData()
+//    }
+//  } catch {
+//    case e =>
+//      e.printStackTrace()
+//  }
 
-  private def dataUpdate() {
+  private def fetchData() {
 
-    fromSource.onComplete {
+    fromSource().onComplete {
       case Failure(e) => Logger.warn(s"failed to get latest data due to ${e.getMessage}", e)
       case Success(d) => {
         synchronized {
@@ -99,5 +96,5 @@ class FileCachedRepositoryDataSource(cacheFilename: String) extends CachedReposi
     Future.successful(cachedData.get)
   }
 
-  override def reload(): Unit = ???
+  override def reload(): Unit = ()
 }

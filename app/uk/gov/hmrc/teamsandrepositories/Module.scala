@@ -5,10 +5,11 @@ import java.time.LocalDateTime
 import com.google.inject.name.Names
 import com.google.inject.{AbstractModule, Inject, TypeLiteral}
 import play.api.Configuration
+import play.api.libs.concurrent.AkkaGuiceSupport
 import uk.gov.hmrc.githubclient.GithubApiClient
 import uk.gov.hmrc.teamsandrepositories.config.{CacheConfig, GithubConfig}
 
-class Module (environment: play.api.Environment, configuration: Configuration) extends AbstractModule {
+class Module (environment: play.api.Environment, configuration: Configuration) extends AbstractModule with AkkaGuiceSupport {
 
   override def configure(): Unit = {
     val useMemoryDataCache = configuration.getBoolean("github.integration.enabled").getOrElse(false)
@@ -27,7 +28,7 @@ class Module (environment: play.api.Environment, configuration: Configuration) e
         new GithubV3RepositoryDataSource(githubConfig, gitOpenClient, isInternal = false)
 
       val mem = new MemoryCachedRepositoryDataSource[Seq[TeamRepositories]](
-        new CacheConfig(configuration),
+//        new CacheConfig(configuration),
         new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)).getTeamRepoMapping _,
         LocalDateTime.now
       )

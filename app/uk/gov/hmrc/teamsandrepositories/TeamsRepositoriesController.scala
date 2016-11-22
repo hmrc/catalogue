@@ -20,7 +20,9 @@ import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneId, ZonedDateTime}
 import java.util.concurrent.Executors
 
+import akka.actor.ActorSystem
 import com.google.inject.{Inject, Singleton}
+import play.Logger
 import play.api.{Configuration, Play}
 import play.api.libs.json.Json.JsValueWrapper
 import play.api.libs.json._
@@ -134,7 +136,11 @@ class DataLoader @Inject() (cachedRepositoryDataSource: CachedRepositoryDataSour
 //}
 
 
-class TeamsRepositoriesController @Inject()(dataLoader: CachedRepositoryDataSource[Seq[TeamRepositories]], urlTemplatesProvider: UrlTemplatesProvider, configuration: Configuration) extends BaseController {
+class TeamsRepositoriesController @Inject()(dataLoader: CachedRepositoryDataSource[Seq[TeamRepositories]],
+                                            cacheConfig: CacheConfig,
+                                            urlTemplatesProvider: UrlTemplatesProvider,
+                                            configuration: Configuration,
+                                            actorSystem: ActorSystem) extends BaseController {
 
   import TeamRepositoryWrapper._
 
@@ -148,6 +154,11 @@ class TeamsRepositoriesController @Inject()(dataLoader: CachedRepositoryDataSour
   implicit val environmentFormats = Json.format[Link]
   implicit val linkFormats = Json.format[Environment]
   implicit val serviceFormats = Json.format[RepositoryDetails]
+
+  actorSystem.scheduler.schedule(cacheConfig.teamsCacheDuration, cacheConfig.teamsCacheDuration) {
+    Logger.info("Scheduled teams repository cache reload triggered")
+    dataLoader.reload()
+  }
 
   private def format(dateTime: LocalDateTime): String = {
     DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.of(dateTime, ZoneId.of("GMT")))
@@ -219,7 +230,7 @@ class TeamsRepositoriesController @Inject()(dataLoader: CachedRepositoryDataSour
     }
   }
 
-  def reloadCache() = Action { implicit request =>
+  def reloadCache() = Action {
     dataLoader.reload()
     Ok("Cache reload triggered successfully")
   }
