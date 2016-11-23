@@ -122,24 +122,5 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec
       }
     }
 
-    "populate the cache from the data source and retain it until the configured expiry time" in {
-
-      val testConfig = new CacheConfig(mock[Configuration]) {
-        override def teamsCacheDuration: FiniteDuration = 100 millis
-      }
-
-      val cachedData = Iterator("result1", "result2", "result3").map(Future.successful)
-
-      withCache(() => cachedData.next, testConfig) { cache =>
-
-        eventually {
-          cache.getCachedTeamRepoMapping.futureValue.data shouldBe "result1"
-        }
-
-        eventually {
-          cache.getCachedTeamRepoMapping.futureValue.data shouldBe "result2"
-        }
-      }
-    }
   }
 }

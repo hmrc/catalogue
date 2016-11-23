@@ -21,16 +21,14 @@ import java.time.{LocalDateTime, ZoneId, ZonedDateTime}
 import java.util.concurrent.Executors
 
 import akka.actor.ActorSystem
-import com.google.inject.{Inject, Singleton}
+import com.google.inject.Inject
 import play.Logger
-import play.api.{Configuration, Play}
+import play.api.Configuration
 import play.api.libs.json.Json.JsValueWrapper
 import play.api.libs.json._
 import play.api.mvc.{Results, _}
-import play.libs.Akka
-import uk.gov.hmrc.githubclient.GithubApiClient
 import uk.gov.hmrc.play.microservice.controller.BaseController
-import uk.gov.hmrc.teamsandrepositories.config.{GithubConfig, UrlTemplatesProvider, _}
+import uk.gov.hmrc.teamsandrepositories.config.{UrlTemplatesProvider, _}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
@@ -88,52 +86,6 @@ object Team {
 object BlockingIOExecutionContext {
   implicit val executionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(32))
 }
-
-
-@Singleton
-class DataLoader @Inject() (cachedRepositoryDataSource: CachedRepositoryDataSource[Seq[TeamRepositories]]) {
-  def getCachedTeamRepoMapping = cachedRepositoryDataSource.getCachedTeamRepoMapping
-  def reload = cachedRepositoryDataSource.reload()
-}
-
-
-//@Singleton
-//class DataLoader @Inject()(configuration: Configuration, githubConfig: GithubConfig) {
-//
-//  private val githubIntegrationEnabled = configuration.getBoolean("github.integration.enabled").getOrElse(true)
-//
-//  private val gitApiEnterpriseClient = GithubApiClient(githubConfig.githubApiEnterpriseConfig.apiUrl, githubConfig.githubApiEnterpriseConfig.key)
-//
-//  private val enterpriseTeamsRepositoryDataSource: RepositoryDataSource =
-//    new GithubV3RepositoryDataSource(githubConfig, gitApiEnterpriseClient, isInternal = true)
-//
-//  private val gitOpenClient = GithubApiClient(githubConfig.githubApiOpenConfig.apiUrl, githubConfig.githubApiOpenConfig.key)
-//  private val openTeamsRepositoryDataSource: RepositoryDataSource =
-//    new GithubV3RepositoryDataSource(githubConfig, gitOpenClient, isInternal = false)
-//
-//  private def load: () => Future[Seq[TeamRepositories]] = new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)).getTeamRepoMapping _
-//
-//  private val cachedDataSource =
-//    if (githubIntegrationEnabled) {
-//      new MemoryCachedRepositoryDataSource[Seq[TeamRepositories]](
-//        CacheConfig,
-//        new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)).getTeamRepoMapping _,
-//        LocalDateTime.now
-//      )
-//    } else {
-//      val cacheFilename = configuration.getString("cacheFilename").getOrElse(throw new RuntimeException("cacheFilename is not specified for off-line (dev) usage"))
-//      new FileCachedRepositoryDataSource(cacheFilename)
-//    }
-//
-//
-//  def cachedData: Future[CachedResult[Seq[TeamRepositories]]] = cachedDataSource.getCachedTeamRepoMapping
-//
-//  def reload(): Unit = {
-//    cachedDataSource.reload()
-//  }
-//
-//
-//}
 
 
 class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDataSource[Seq[TeamRepositories]],

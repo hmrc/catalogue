@@ -4,11 +4,9 @@ import java.time.LocalDateTime
 
 import com.google.inject.{Inject, Singleton}
 import play.Logger
-import play.api.libs.json.Json
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.io.Source
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 
 trait CachedRepositoryDataSource[T] {
@@ -19,7 +17,7 @@ trait CachedRepositoryDataSource[T] {
 
 @Singleton
 class MemoryCachedRepositoryDataSource[T] @Inject()(dataSource: () => Future[T],
-                                                 timeStamp: () => LocalDateTime) /*  extends CachedRepositoryDataSource[T] */ {
+                                                    timeStamp: () => LocalDateTime) /*  extends CachedRepositoryDataSource[T] */ {
 
   private var cachedData: Option[CachedResult[T]] = None
   private val initialPromise = Promise[CachedResult[T]]()
@@ -49,16 +47,6 @@ class MemoryCachedRepositoryDataSource[T] @Inject()(dataSource: () => Future[T],
     fetchData()
   }
 
-  //  try {
-  //    Logger.info(s"Initialising cache reload every ${cacheConfig.teamsCacheDuration}")
-  //    Akka.system().scheduler.schedule(cacheConfig.teamsCacheDuration, cacheConfig.teamsCacheDuration) {
-  //      Logger.info("Scheduled teams repository cache reload triggered")
-  //      fetchData()
-  //    }
-  //  } catch {
-  //    case e =>
-  //      e.printStackTrace()
-  //  }
 
   private def fetchData() {
 
@@ -79,26 +67,3 @@ class MemoryCachedRepositoryDataSource[T] @Inject()(dataSource: () => Future[T],
   }
 }
 
-class FileCachedRepositoryDataSource(cacheFilename: String) extends CachedRepositoryDataSource[Seq[TeamRepositories]] {
-
-  implicit val repositoryFormats = Json.format[Repository]
-  implicit val teamRepositoryFormats = Json.format[TeamRepositories]
-
-  lazy val cachedData = loadCacheData
-
-  private def loadCacheData: Option[CachedResult[Seq[TeamRepositories]]] = {
-    Try(Json.parse(Source.fromFile(cacheFilename).mkString)
-      .as[Seq[TeamRepositories]]) match {
-      case Success(repos) => Some(new CachedResult(repos, LocalDateTime.now))
-      case Failure(e) =>
-        e.printStackTrace()
-        None
-    }
-  }
-
-  override def getCachedTeamRepoMapping: Future[CachedResult[Seq[TeamRepositories]]] = {
-    Future.successful(cachedData.get)
-  }
-
-  override def reload(): Unit = ()
-}
