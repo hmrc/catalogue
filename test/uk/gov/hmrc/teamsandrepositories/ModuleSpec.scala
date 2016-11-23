@@ -28,7 +28,10 @@ class ModuleSpec
       when(mockConfiguration.getBoolean("github.offline.mode")).thenReturn(Some(true))
       when(mockConfiguration.getString("cacheFilename")).thenReturn(Some("/some/tmp/file"))
 
-      val application = new GuiceApplicationBuilder().overrides(new Module(mockEnv, mockConfiguration)).build()
+      val application = new GuiceApplicationBuilder()
+        .overrides(new Module(mockEnv, mockConfiguration))
+        .disable(classOf[com.kenshoo.play.metrics.PlayModule])
+        .build()
 
       val guiceInjector = application.injector.instanceOf(classOf[Injector])
 
@@ -58,7 +61,10 @@ class ModuleSpec
       when(mockConfiguration.getString("github.hidden.repositories")).thenReturn(None)
       when(mockConfiguration.getString("github.hidden.teams")).thenReturn(None)
 
-      val application = new GuiceApplicationBuilder().overrides(new Module(mockEnv, mockConfiguration)).build()
+      val application = new GuiceApplicationBuilder()
+        .overrides(new Module(mockEnv, mockConfiguration))
+        .disable(classOf[com.kenshoo.play.metrics.PlayModule])
+        .build()
 
 
       val guiceInjector = application.injector.instanceOf(classOf[Injector])

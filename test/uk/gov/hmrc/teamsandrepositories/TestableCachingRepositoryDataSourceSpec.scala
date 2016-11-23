@@ -21,12 +21,14 @@ import java.util.concurrent.TimeUnit
 
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.mock.MockitoSugar
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
+import org.scalatest.{BeforeAndAfterAll, Matchers, TestData, WordSpec}
 import org.scalatestplus.play.OneAppPerTest
 import play.api.Configuration
+import play.api.inject.guice
+import play.api.inject.guice.GuiceApplicationBuilder
 import uk.gov.hmrc.teamsandrepositories.config.CacheConfig
 
-import scala.concurrent.duration.{FiniteDuration, _}
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, Promise}
 import scala.util.Success
 
@@ -41,12 +43,14 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec
   with OneAppPerTest {
 
 
+  override def newAppForTest(testData: TestData) = new GuiceApplicationBuilder().disable(classOf[com.kenshoo.play.metrics.PlayModule]).build()
+
+  //!@ can we remove this?
   val testConfig = new CacheConfig(mock[Configuration]) {
     override def teamsCacheDuration: FiniteDuration = FiniteDuration(100, TimeUnit.SECONDS)
   }
 
   def withCache[T](dataLoader:() => Future[T], testConfig:CacheConfig = testConfig)(block: (MemoryCachedRepositoryDataSource[T]) => Unit): Unit ={
-//    val cache = new MemoryCachedRepositoryDataSource[T](testConfig, dataLoader, () => LocalDateTime.now())
     val cache = new MemoryCachedRepositoryDataSource(dataLoader, () => LocalDateTime.now())
     block(cache)
   }
