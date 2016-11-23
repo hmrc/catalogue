@@ -9,6 +9,7 @@ import org.scalatest.mock.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 import play.api.Configuration
 import play.api.inject.guice.GuiceApplicationBuilder
+import uk.gov.hmrc.teamsandrepositories.DataGetter.DataLoaderFunction
 
 
 class ModuleSpec
@@ -35,7 +36,7 @@ class ModuleSpec
 
       val guiceInjector = application.injector.instanceOf(classOf[Injector])
 
-      val key = Key.get(new TypeLiteral[DataGetter[DataLoaderFunction[Seq[TeamRepositories]]]]() {})
+      val key = Key.get(new TypeLiteral[DataGetter[Seq[TeamRepositories]]]() {})
 
       guiceInjector.getInstance(key).isInstanceOf[FileDataGetter] shouldBe(true)
 
@@ -69,7 +70,7 @@ class ModuleSpec
 
       val guiceInjector = application.injector.instanceOf(classOf[Injector])
 
-      val key = Key.get(new TypeLiteral[DataGetter[DataLoaderFunction[Seq[TeamRepositories]]]]() {})
+      val key = Key.get(new TypeLiteral[DataGetter[Seq[TeamRepositories]]]() {})
 
       guiceInjector.getInstance(key).isInstanceOf[GithubDataGetter] shouldBe (true)
     }

@@ -6,26 +6,12 @@ import com.google.inject.{AbstractModule, TypeLiteral}
 import play.api.Configuration
 import play.api.libs.json.Json
 import uk.gov.hmrc.githubclient.GithubApiClient
+import uk.gov.hmrc.teamsandrepositories.DataGetter.DataLoaderFunction
 import uk.gov.hmrc.teamsandrepositories.config.GithubConfig
 
 import scala.concurrent.Future
 import scala.io.Source
 import scala.util.{Failure, Success, Try}
-
-
-trait DataGetter[T] {
-  def runner: T
-}
-
-case class FileDataGetter(f: DataLoaderFunction[Seq[TeamRepositories]]) extends DataGetter[DataLoaderFunction[Seq[TeamRepositories]]] {
-  override def runner = f
-}
-
-case class GithubDataGetter(f: DataLoaderFunction[Seq[TeamRepositories]]) extends DataGetter[DataLoaderFunction[Seq[TeamRepositories]]] {
-  override def runner = f
-}
-
-
 
 class Module(environment: play.api.Environment, configuration: Configuration) extends AbstractModule {
 
@@ -33,14 +19,14 @@ class Module(environment: play.api.Environment, configuration: Configuration) ex
 
     val offlineMode = configuration.getBoolean("github.offline.mode").getOrElse(false)
 
-    bind(new TypeLiteral[DataGetter[DataLoaderFunction[Seq[TeamRepositories]]]]() {}).toInstance(getDataLoader(offlineMode))
+    bind(new TypeLiteral[DataGetter[Seq[TeamRepositories]]]() {}).toInstance(getDataLoader(offlineMode))
 
     bind(new TypeLiteral[() => LocalDateTime]() {}).toInstance(LocalDateTime.now)
 
   }
 
-  def getDataLoader(offlineMode: Boolean): DataGetter[DataLoaderFunction[Seq[TeamRepositories]]] = {
-    val dataLoader: DataGetter[DataLoaderFunction[Seq[TeamRepositories]]] = if (offlineMode) {
+  def getDataLoader(offlineMode: Boolean): DataGetter[Seq[TeamRepositories]] = {
+    val dataLoader: DataGetter[Seq[TeamRepositories]] = if (offlineMode) {
       fileDataLoader
     } else {
       githubDataLoader
@@ -68,7 +54,7 @@ class Module(environment: play.api.Environment, configuration: Configuration) ex
       }
     }
 
-    FileDataGetter(() => (Future.successful(loadCacheData)))
+    FileDataGetter(() => Future.successful(loadCacheData))
   }
 
 

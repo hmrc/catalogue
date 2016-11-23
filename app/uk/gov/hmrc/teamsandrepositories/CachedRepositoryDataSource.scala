@@ -4,6 +4,7 @@ import java.time.LocalDateTime
 
 import com.google.inject.{Inject, Singleton}
 import play.Logger
+import uk.gov.hmrc.teamsandrepositories.DataGetter.DataLoaderFunction
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
@@ -16,7 +17,7 @@ trait CachedRepositoryDataSource[T] {
 }
 
 @Singleton
-class MemoryCachedRepositoryDataSource[T] @Inject()(dataSource: DataGetter[DataLoaderFunction[T]],
+class MemoryCachedRepositoryDataSource[T] @Inject()(dataGetter: DataGetter[T],
                                                     timeStamp: () => LocalDateTime) /*  extends CachedRepositoryDataSource[T] */ {
 
   private var cachedData: Option[CachedResult[T]] = None
@@ -27,7 +28,7 @@ class MemoryCachedRepositoryDataSource[T] @Inject()(dataSource: DataGetter[DataL
   fetchData()
 
   private def fromSource() =
-    dataSource.runner().map { d => {
+    dataGetter.runner().map { d => {
       val stamp = timeStamp()
       Logger.debug(s"Cache reloaded at $stamp")
       new CachedResult(d, stamp)
