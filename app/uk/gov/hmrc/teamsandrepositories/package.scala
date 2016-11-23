@@ -3,6 +3,6 @@ package uk.gov.hmrc
 import scala.concurrent.Future
 
 package object teamsandrepositories {
-  type DataLoaderFunction = () => Future[Seq[TeamRepositories]]
+  type DataLoaderFunction[T] = () => Future[T]
 
 }

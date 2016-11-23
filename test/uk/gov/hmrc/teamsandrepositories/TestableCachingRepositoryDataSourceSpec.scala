@@ -24,12 +24,11 @@ import org.scalatest.mock.MockitoSugar
 import org.scalatest.{BeforeAndAfterAll, Matchers, TestData, WordSpec}
 import org.scalatestplus.play.OneAppPerTest
 import play.api.Configuration
-import play.api.inject.guice
 import play.api.inject.guice.GuiceApplicationBuilder
 import uk.gov.hmrc.teamsandrepositories.config.CacheConfig
 
+import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.{Future, Promise}
 import scala.util.Success
 
 
@@ -50,8 +49,8 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec
     override def teamsCacheDuration: FiniteDuration = FiniteDuration(100, TimeUnit.SECONDS)
   }
 
-  def withCache[T](dataLoader:() => Future[T], testConfig:CacheConfig = testConfig)(block: (MemoryCachedRepositoryDataSource[T]) => Unit): Unit ={
-    val cache = new MemoryCachedRepositoryDataSource(dataLoader, () => LocalDateTime.now())
+  def withCache[T](dataGetter:DataGetter[DataLoaderFunction[T]], testConfig:CacheConfig = testConfig)(block: (MemoryCachedRepositoryDataSource[T]) => Unit): Unit ={
+    val cache = new MemoryCachedRepositoryDataSource(dataGetter, () => LocalDateTime.now())
     block(cache)
   }
 
@@ -60,7 +59,11 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec
     "return an uncompleted future when called before the cache has been populated" in {
       val promise1 = Promise[String]()
 
-      withCache(() => promise1.future){ cache =>
+      val testDataGetter = new DataGetter[DataLoaderFunction[String]] {
+        override def runner: DataLoaderFunction[String] = () => promise1.future
+      }
+
+      withCache[String](testDataGetter){ cache =>
         cache.getCachedTeamRepoMapping.isCompleted shouldBe false
       }
     }
@@ -71,7 +74,11 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec
 
       val cachedData = Iterator[Promise[String]](promise1, promise2).map(_.future)
 
-      withCache(() => cachedData.next) { cache =>
+      val testDataGetter = new DataGetter[DataLoaderFunction[String]] {
+        override def runner: DataLoaderFunction[String] = () => cachedData.next
+      }
+
+      withCache(testDataGetter) { cache =>
         promise1.complete(Success(ResultValue))
 
         eventually {
@@ -91,7 +98,11 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec
 
       val cachedData = Iterator[Promise[String]](promise1, promise2).map(_.future)
 
-      withCache(() => cachedData.next) { cache =>
+      val testDataGetter = new DataGetter[DataLoaderFunction[String]] {
+        override def runner: DataLoaderFunction[String] = () => cachedData.next
+      }
+
+      withCache(testDataGetter) { cache =>
         promise1.success("result1")
 
         eventually {
@@ -115,7 +126,11 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec
 
       val cachedData = Iterator[Promise[String]](promise1, promise2).map(_.future)
 
-      withCache(() => cachedData.next) { cache =>
+      val testDataGetter = new DataGetter[DataLoaderFunction[String]] {
+        override def runner: DataLoaderFunction[String] = () => cachedData.next
+      }
+
+      withCache(testDataGetter) { cache =>
 
         val future1 = cache.getCachedTeamRepoMapping
         future1.isCompleted shouldBe false

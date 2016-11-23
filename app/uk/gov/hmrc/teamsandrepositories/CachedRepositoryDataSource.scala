@@ -16,7 +16,7 @@ trait CachedRepositoryDataSource[T] {
 }
 
 @Singleton
-class MemoryCachedRepositoryDataSource[T] @Inject()(dataSource: () => Future[T],
+class MemoryCachedRepositoryDataSource[T] @Inject()(dataSource: DataGetter[DataLoaderFunction[T]],
                                                     timeStamp: () => LocalDateTime) /*  extends CachedRepositoryDataSource[T] */ {
 
   private var cachedData: Option[CachedResult[T]] = None
@@ -27,7 +27,7 @@ class MemoryCachedRepositoryDataSource[T] @Inject()(dataSource: () => Future[T],
   fetchData()
 
   private def fromSource() =
-    dataSource().map { d => {
+    dataSource.runner().map { d => {
       val stamp = timeStamp()
       Logger.debug(s"Cache reloaded at $stamp")
       new CachedResult(d, stamp)

@@ -13,16 +13,16 @@ import scala.io.Source
 import scala.util.{Failure, Success, Try}
 
 
-sealed trait DataGetter[T] {
+trait DataGetter[T] {
   def runner: T
 }
 
-case class FileDataGetter(f: DataLoaderFunction) extends DataGetter[DataLoaderFunction] {
-  override def runner: DataLoaderFunction = f
+case class FileDataGetter(f: DataLoaderFunction[Seq[TeamRepositories]]) extends DataGetter[DataLoaderFunction[Seq[TeamRepositories]]] {
+  override def runner = f
 }
 
-case class GithubDataGetter(f: DataLoaderFunction) extends DataGetter[DataLoaderFunction] {
-  override def runner: DataLoaderFunction = f
+case class GithubDataGetter(f: DataLoaderFunction[Seq[TeamRepositories]]) extends DataGetter[DataLoaderFunction[Seq[TeamRepositories]]] {
+  override def runner = f
 }
 
 
@@ -33,14 +33,14 @@ class Module(environment: play.api.Environment, configuration: Configuration) ex
 
     val offlineMode = configuration.getBoolean("github.offline.mode").getOrElse(false)
 
-    bind(new TypeLiteral[DataGetter[DataLoaderFunction]]() {}).toInstance(getDataLoader(offlineMode))
+    bind(new TypeLiteral[DataGetter[DataLoaderFunction[Seq[TeamRepositories]]]]() {}).toInstance(getDataLoader(offlineMode))
 
     bind(new TypeLiteral[() => LocalDateTime]() {}).toInstance(LocalDateTime.now)
 
   }
 
-  def getDataLoader(offlineMode: Boolean): DataGetter[DataLoaderFunction] = {
-    val dataLoader: DataGetter[DataLoaderFunction] = if (offlineMode) {
+  def getDataLoader(offlineMode: Boolean): DataGetter[DataLoaderFunction[Seq[TeamRepositories]]] = {
+    val dataLoader: DataGetter[DataLoaderFunction[Seq[TeamRepositories]]] = if (offlineMode) {
       fileDataLoader
     } else {
       githubDataLoader
