@@ -28,7 +28,7 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import uk.gov.hmrc.teamsandrepositories.DataGetter.DataLoaderFunction
 import uk.gov.hmrc.teamsandrepositories.config.CacheConfig
 
-import scala.concurrent.Promise
+import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Success
 
@@ -58,10 +58,10 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec
   "Caching teams repository data source" should {
 
     "return an uncompleted future when called before the cache has been populated" in {
-      val promise1 = Promise[String]()
+      val promise1 = Promise[Seq[String]]()
 
       val testDataGetter = new DataGetter[String] {
-        override def runner: DataLoaderFunction[String] = () => promise1.future
+        override val runner: () => Future[Seq[String]] = () => promise1.future
       }
 
       withCache[String](testDataGetter){ cache =>
@@ -70,13 +70,13 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec
     }
 
     "return the current result when the cache is in the process of reloading" in {
-      val (promise1, promise2) = (Promise[String](), Promise[String]())
-      val ResultValue = "ResultValue"
+      val (promise1, promise2) = (Promise[Seq[String]](), Promise[Seq[String]]())
+      val ResultValue = Seq("ResultValue")
 
-      val cachedData = Iterator[Promise[String]](promise1, promise2).map(_.future)
+      val cachedData = Iterator[Promise[Seq[String]]](promise1, promise2).map(_.future)
 
       val testDataGetter = new DataGetter[String] {
-        override def runner: DataLoaderFunction[String] = () => cachedData.next
+        override val runner: () => Future[Seq[String]] = () => cachedData.next
       }
 
       withCache(testDataGetter) { cache =>
@@ -95,16 +95,16 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec
 
 
     "return the updated result when the cache has completed reloading" in {
-      val (promise1, promise2) = (Promise[String](), Promise[String]())
+      val (promise1, promise2) = (Promise[Seq[String]](), Promise[Seq[String]]())
 
-      val cachedData = Iterator[Promise[String]](promise1, promise2).map(_.future)
+      val cachedData = Iterator[Promise[Seq[String]]](promise1, promise2).map(_.future)
 
       val testDataGetter = new DataGetter[String] {
-        override def runner: DataLoaderFunction[String] = () => cachedData.next
+        override val runner: () => Future[Seq[String]] = () => cachedData.next
       }
 
       withCache(testDataGetter) { cache =>
-        promise1.success("result1")
+        promise1.success(Seq("result1"))
 
         eventually {
           cache.getCachedTeamRepoMapping.isCompleted shouldBe true
@@ -112,10 +112,10 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec
 
         cache.reload()
 
-        promise2.success("result2")
+        promise2.success(Seq("result2"))
 
         eventually {
-          cache.getCachedTeamRepoMapping.futureValue.data shouldBe "result2"
+          cache.getCachedTeamRepoMapping.futureValue.data shouldBe Seq("result2")
         }
       }
     }
@@ -123,21 +123,21 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec
 
     "return a completed future when the cache has been populated" in {
 
-      val (promise1, promise2) = (Promise[String](), Promise[String]())
+      val (promise1, promise2) = (Promise[Seq[String]](), Promise[Seq[String]]())
 
-      val cachedData = Iterator[Promise[String]](promise1, promise2).map(_.future)
+      val cachedData = Iterator[Promise[Seq[String]]](promise1, promise2).map(_.future)
 
       val testDataGetter = new DataGetter[String] {
-        override def runner: DataLoaderFunction[String] = () => cachedData.next
+        override val runner: () => Future[Seq[String]] = () => cachedData.next
       }
 
       withCache(testDataGetter) { cache =>
 
         val future1 = cache.getCachedTeamRepoMapping
         future1.isCompleted shouldBe false
-        promise1.complete(Success("result1"))
+        promise1.complete(Success(Seq("result1")))
         eventually {
-          future1.futureValue.data shouldBe "result1"
+          future1.futureValue.data shouldBe Seq("result1")
         }
       }
     }

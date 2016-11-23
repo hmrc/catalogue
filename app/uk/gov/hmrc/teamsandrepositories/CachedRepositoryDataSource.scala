@@ -20,8 +20,8 @@ trait CachedRepositoryDataSource[T] {
 class MemoryCachedRepositoryDataSource[T] @Inject()(dataGetter: DataGetter[T],
                                                     timeStamp: () => LocalDateTime) /*  extends CachedRepositoryDataSource[T] */ {
 
-  private var cachedData: Option[CachedResult[T]] = None
-  private val initialPromise = Promise[CachedResult[T]]()
+  private var cachedData: Option[CachedResult[Seq[T]]] = None
+  private val initialPromise = Promise[CachedResult[Seq[T]]]()
 
   import ExecutionContext.Implicits._
 
@@ -35,7 +35,7 @@ class MemoryCachedRepositoryDataSource[T] @Inject()(dataGetter: DataGetter[T],
     }
     }
 
-  def getCachedTeamRepoMapping: Future[CachedResult[T]] = {
+  def getCachedTeamRepoMapping: Future[CachedResult[Seq[T]]] = {
     Logger.info(s"cachedData is available = ${cachedData.isDefined}")
     if (cachedData.isEmpty && initialPromise.isCompleted) {
       Logger.warn("in unexpected state where initial promise is complete but there is not cached data. Perform manual reload.")
@@ -53,7 +53,7 @@ class MemoryCachedRepositoryDataSource[T] @Inject()(dataGetter: DataGetter[T],
 
     fromSource().onComplete {
       case Failure(e) => Logger.warn(s"failed to get latest data due to ${e.getMessage}", e)
-      case Success(d) => {
+      case Success(d: CachedResult[Seq[T]]) => {
         synchronized {
           this.cachedData = Some(d)
           Logger.info(s"data update completed successfully")

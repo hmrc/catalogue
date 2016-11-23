@@ -88,7 +88,7 @@ object BlockingIOExecutionContext {
 }
 
 
-class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDataSource[Seq[TeamRepositories]],
+class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDataSource[TeamRepositories],
                                             cacheConfig: CacheConfig,
                                             urlTemplatesProvider: UrlTemplatesProvider,
                                             configuration: Configuration,

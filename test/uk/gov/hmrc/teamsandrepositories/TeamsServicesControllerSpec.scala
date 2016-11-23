@@ -58,7 +58,7 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
   import play.api.inject.guice.GuiceApplicationBuilder
 
 
-  val mockDataLoader = mock[MemoryCachedRepositoryDataSource[Seq[TeamRepositories]]]
+  val mockDataLoader = mock[MemoryCachedRepositoryDataSource[TeamRepositories]]
   val mockUrlTemplateProvider = mock[UrlTemplatesProvider]
   val mockConfiguration = mock[Configuration]
   val mockCacheConfig = mock[CacheConfig]

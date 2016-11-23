@@ -19,14 +19,14 @@ class Module(environment: play.api.Environment, configuration: Configuration) ex
 
     val offlineMode = configuration.getBoolean("github.offline.mode").getOrElse(false)
 
-    bind(new TypeLiteral[DataGetter[Seq[TeamRepositories]]]() {}).toInstance(getDataLoader(offlineMode))
+    bind(new TypeLiteral[DataGetter[TeamRepositories]]() {}).toInstance(getDataLoader(offlineMode))
 
     bind(new TypeLiteral[() => LocalDateTime]() {}).toInstance(LocalDateTime.now)
 
   }
 
-  def getDataLoader(offlineMode: Boolean): DataGetter[Seq[TeamRepositories]] = {
-    val dataLoader: DataGetter[Seq[TeamRepositories]] = if (offlineMode) {
+  def getDataLoader(offlineMode: Boolean): DataGetter[TeamRepositories] = {
+    val dataLoader: DataGetter[TeamRepositories] = if (offlineMode) {
       fileDataLoader
     } else {
       githubDataLoader
