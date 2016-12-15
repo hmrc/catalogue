@@ -6,7 +6,7 @@ import com.google.inject.{AbstractModule, TypeLiteral}
 import play.api.Configuration
 import play.api.libs.json.Json
 import uk.gov.hmrc.githubclient.GithubApiClient
-import uk.gov.hmrc.teamsandrepositories.DataGetter.DataLoaderFunction
+import uk.gov.hmrc.teamsandrepositories.DataGetterPersister.DataLoaderPersisterFunction
 import uk.gov.hmrc.teamsandrepositories.config.GithubConfig
 
 import scala.concurrent.Future
@@ -19,14 +19,14 @@ class Module(environment: play.api.Environment, configuration: Configuration) ex
 
     val offlineMode = configuration.getBoolean("github.offline.mode").getOrElse(false)
 
-    bind(new TypeLiteral[DataGetter[TeamRepositories]]() {}).toInstance(getDataLoader(offlineMode))
+    bind(new TypeLiteral[DataGetterPersister[Boolean]]() {}).toInstance(getDataLoader(offlineMode))
 
     bind(new TypeLiteral[() => LocalDateTime]() {}).toInstance(LocalDateTime.now)
 
   }
 
-  def getDataLoader(offlineMode: Boolean): DataGetter[TeamRepositories] = {
-    val dataLoader: DataGetter[TeamRepositories] = if (offlineMode) {
+  def getDataLoader(offlineMode: Boolean): DataGetterPersister[Boolean] = {
+    val dataLoader: DataGetterPersister[Boolean] = if (offlineMode) {
       fileDataLoader
     } else {
       githubDataLoader
@@ -37,7 +37,7 @@ class Module(environment: play.api.Environment, configuration: Configuration) ex
 
 
 
-  def fileDataLoader: FileDataGetter = {
+  def fileDataLoader: FileDataGetterPersister = {
 
     implicit val repositoryFormats = Json.format[GitRepository]
     implicit val teamRepositoryFormats = Json.format[TeamRepositories]
@@ -54,11 +54,12 @@ class Module(environment: play.api.Environment, configuration: Configuration) ex
       }
     }
 
-    FileDataGetter(() => Future.successful(loadCacheData))
+    //!@FileDataGetterPersister(() => Future.successful(loadCacheData))
+    ???
   }
 
 
-  def githubDataLoader: GithubDataGetter = {
+  def githubDataLoader: GithubDataGetterPersister = {
     val githubConfig = new GithubConfig(configuration)
 
     val url = githubConfig.githubApiEnterpriseConfig.apiUrl
@@ -72,8 +73,26 @@ class Module(environment: play.api.Environment, configuration: Configuration) ex
     val openTeamsRepositoryDataSource: RepositoryDataSource =
       new GithubV3RepositoryDataSource(githubConfig, gitOpenClient, isInternal = false)
 
-    GithubDataGetter(new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)).getTeamRepoMapping _)
+//    val runner: (TeamsAndReposPersister) => Future[Seq[Boolean]] = new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)).persistTeamsAndReposMapping _
+    val runner: (TeamsAndReposPersister) => Future[Seq[Boolean]] = new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource)).persistTeamsAndReposMapping _
+    GithubDataGetterPersister(runner)
   }
+//  def githubDataLoader: GithubDataGetter = {
+//    val githubConfig = new GithubConfig(configuration)
+//
+//    val url = githubConfig.githubApiEnterpriseConfig.apiUrl
+//
+//    val gitApiEnterpriseClient = GithubApiClient(url, githubConfig.githubApiEnterpriseConfig.key)
+//
+//    val enterpriseTeamsRepositoryDataSource: RepositoryDataSource =
+//      new GithubV3RepositoryDataSource(githubConfig, gitApiEnterpriseClient, isInternal = true)
+//
+//    val gitOpenClient = GithubApiClient(githubConfig.githubApiOpenConfig.apiUrl, githubConfig.githubApiOpenConfig.key)
+//    val openTeamsRepositoryDataSource: RepositoryDataSource =
+//      new GithubV3RepositoryDataSource(githubConfig, gitOpenClient, isInternal = false)
+//
+//    GithubDataGetter(new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)).getTeamRepoMapping _)
+//  }
 
 
 }

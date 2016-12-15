@@ -16,8 +16,9 @@
 
 package uk.gov.hmrc.teamsandrepositories
 
+import java.time.LocalDateTime
+
 import com.google.inject.{Inject, Singleton}
-import play.Logger
 import play.api.libs.json._
 import uk.gov.hmrc.githubclient.{GhOrganisation, GhRepository, GhTeam, GithubApiClient}
 import uk.gov.hmrc.teamsandrepositories.RepoType._
@@ -40,13 +41,20 @@ case class GitRepository(name: String,
                          isInternal: Boolean = false,
                          repoType: RepoType = RepoType.Other)
 
+object GitRepository {
+  implicit val gitRepositoryFormats = Json.format[GitRepository]
+}
+
+
 trait RepositoryDataSource {
-  def getTeamRepoMapping: Future[Seq[TeamRepositories]]
+//  def getTeamRepoMapping: Future[Seq[TeamRepositories]]
+
+  def persistTeamsAndReposMapping(persister: TeamsAndReposPersister): Future[Seq[Boolean]]
 }
 
 @Singleton
-class GithubV3RepositoryDataSource @Inject() (githubConfig: GithubConfig, gh: GithubApiClient,
-                                   val isInternal: Boolean) extends RepositoryDataSource {
+class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig, gh: GithubApiClient,
+                                             val isInternal: Boolean) extends RepositoryDataSource {
 
   import BlockingIOExecutionContext._
 
@@ -57,35 +65,69 @@ class GithubV3RepositoryDataSource @Inject() (githubConfig: GithubConfig, gh: Gi
   val retries: Int = 5
   val initialDuration: Double = 10
 
-  def getTeamRepoMapping: Future[Seq[TeamRepositories]] =
+//  override def getTeamRepoMapping: Future[Seq[TeamRepositories]] =
+//    exponentialRetry(retries, initialDuration) {
+//      gh.getOrganisations.flatMap { orgs =>
+//        Future.sequence(orgs.map(mapOrganisation)).map {
+//          _.flatten
+//        }
+//      }
+//    }
+
+  override def persistTeamsAndReposMapping(persister: TeamsAndReposPersister): Future[Seq[Boolean]] = {
+
+    def traverseOrganisation(organisation: GhOrganisation): Future[List[Boolean]] =
+      exponentialRetry(retries, initialDuration) {
+        gh.getTeamsForOrganisation(organisation.login).flatMap { teams =>
+          Future.sequence(for {
+            team <- teams; if !githubConfig.hiddenTeams.contains(team.name)
+          } yield persistTeam(organisation, team))
+        }
+
+      }
+
+    def persistTeam(organisation: GhOrganisation, team: GhTeam): Future[Boolean] =
+      exponentialRetry(retries, initialDuration) {
+        gh.getReposForTeam(team.id).flatMap { repos =>
+
+          val gitRepositoriesForTeam = Future.sequence(for {
+            repo <- repos; if !repo.fork && !githubConfig.hiddenRepositories.contains(repo.name)
+          } yield mapRepository(organisation, repo))
+
+          gitRepositoriesForTeam
+            .flatMap(rs => persister.upsert(PersistedTeamAndRepositories(team.name, LocalDateTime.now(), rs)))
+        }
+      }
+
     exponentialRetry(retries, initialDuration) {
       gh.getOrganisations.flatMap { orgs =>
-        Future.sequence(orgs.map(mapOrganisation)).map {
+        Future.sequence(orgs.map(traverseOrganisation)).map {
           _.flatten
         }
       }
     }
+  }
 
-  def mapOrganisation(organisation: GhOrganisation): Future[List[TeamRepositories]] =
-    exponentialRetry(retries, initialDuration) {
-      gh.getTeamsForOrganisation(organisation.login).flatMap { teams =>
-        Future.sequence(for {
-          team <- teams; if !githubConfig.hiddenTeams.contains(team.name)
-        } yield mapTeam(organisation, team))
-      }
-    }
+//  private def mapOrganisation(organisation: GhOrganisation): Future[List[TeamRepositories]] =
+//    exponentialRetry(retries, initialDuration) {
+//      gh.getTeamsForOrganisation(organisation.login).flatMap { teams =>
+//        Future.sequence(for {
+//          team <- teams; if !githubConfig.hiddenTeams.contains(team.name)
+//        } yield mapTeam(organisation, team))
+//      }
+//    }
 
 
-  def mapTeam(organisation: GhOrganisation, team: GhTeam): Future[TeamRepositories] =
-    exponentialRetry(retries, initialDuration) {
-      gh.getReposForTeam(team.id).flatMap { repos =>
-        Future.sequence(for {
-          repo <- repos; if !repo.fork && !githubConfig.hiddenRepositories.contains(repo.name)
-        } yield mapRepository(organisation, repo)).map { (repos: List[GitRepository]) =>
-          TeamRepositories(team.name, repositories = repos)
-        }
-      }
-    }
+//  private def mapTeam(organisation: GhOrganisation, team: GhTeam): Future[TeamRepositories] =
+//    exponentialRetry(retries, initialDuration) {
+//      gh.getReposForTeam(team.id).flatMap { repos =>
+//        Future.sequence(for {
+//          repo <- repos; if !repo.fork && !githubConfig.hiddenRepositories.contains(repo.name)
+//        } yield mapRepository(organisation, repo)).map { (repos: List[GitRepository]) =>
+//          TeamRepositories(team.name, repositories = repos)
+//        }
+//      }
+//    }
 
 
   private def mapRepository(organisation: GhOrganisation, repo: GhRepository): Future[GitRepository] = {
@@ -94,22 +136,19 @@ class GithubV3RepositoryDataSource @Inject() (githubConfig: GithubConfig, gh: Gi
 
       val repository: GitRepository = GitRepository(repo.name, repo.description, repo.htmlUrl, createdDate = repo.createdDate, lastActiveDate = repo.lastActiveDate, isInternal = this.isInternal)
 
-      if (deployable)
-
+      if (deployable) {
         Future.successful(repository.copy(repoType = RepoType.Deployable))
-
-      else isLibrary(repo, organisation).map { tags =>
-
-        if (tags) repository.copy(repoType = RepoType.Library)
-
-        else repository
+      } else {
+        isLibrary(repo, organisation).map { tags =>
+          if (tags) repository.copy(repoType = RepoType.Library)
+          else repository
+        }
       }
-
     }
   }
 
   private def isLibrary(repo: GhRepository, organisation: GhOrganisation) = {
-    import uk.gov.hmrc.teamsandrepositories.FutureHelpers._
+    import uk.gov.hmrc.teamsandrepositories.FutureExtras._
 
     def hasSrcMainScala =
       exponentialRetry(retries, initialDuration)(hasPath(organisation, repo, "src/main/scala"))
@@ -124,7 +163,7 @@ class GithubV3RepositoryDataSource @Inject() (githubConfig: GithubConfig, gh: Gi
   }
 
   private def isDeployable(repo: GhRepository, organisation: GhOrganisation) = {
-    import uk.gov.hmrc.teamsandrepositories.FutureHelpers._
+    import uk.gov.hmrc.teamsandrepositories.FutureExtras._
 
     def isPlayServiceF =
       exponentialRetry(retries, initialDuration)(hasPath(organisation, repo, "conf/application.conf"))
@@ -143,19 +182,34 @@ class GithubV3RepositoryDataSource @Inject() (githubConfig: GithubConfig, gh: Gi
 
   private def hasPath(organisation: GhOrganisation, repo: GhRepository, path: String) =
     gh.repoContainsContent(path, repo.name, organisation.login)
+
 }
+
 
 class CompositeRepositoryDataSource(val dataSources: List[RepositoryDataSource]) extends RepositoryDataSource {
 
   import BlockingIOExecutionContext._
 
-  override def getTeamRepoMapping: Future[Seq[TeamRepositories]] =
-    Future.sequence(dataSources.map(_.getTeamRepoMapping)).map { results =>
-      val flattened: List[TeamRepositories] = results.flatten
+//  override def getTeamRepoMapping: Future[Seq[TeamRepositories]] =
+//    Future.sequence(dataSources.map(_.getTeamRepoMapping)).map { results =>
+//      val flattened: List[TeamRepositories] = results.flatten
+//
+//      Logger.info(s"Combining ${flattened.length} results from ${dataSources.length} sources")
+//      flattened.groupBy(_.teamName).map { case (name, teams) =>
+//        TeamRepositories(name, teams.flatMap(t => t.repositories).sortBy(_.name))
+//      }.toList
+//    }
 
-      Logger.info(s"Combining ${flattened.length} results from ${dataSources.length} sources")
-      flattened.groupBy(_.teamName).map { case (name, teams) =>
-        TeamRepositories(name, teams.flatMap(t => t.repositories).sortBy(_.name))
-      }.toList
+
+  //!@ return type
+  override def persistTeamsAndReposMapping(persister: TeamsAndReposPersister): Future[Seq[Boolean]] =
+    Future.sequence(dataSources.map(_.persistTeamsAndReposMapping(persister))).map { results =>
+      val flattened: List[Boolean] = results.flatten
+
+      //      Logger.info(s"Combining ${flattened.length} results from ${dataSources.length} sources")
+      //      flattened.groupBy(_.teamName).map { case (name, teams) =>
+      //        TeamRepositories(name, teams.flatMap(t => t.repositories).sortBy(_.name))
+      //      }.toList
+      ???
     }
 }

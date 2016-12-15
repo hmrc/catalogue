@@ -25,7 +25,7 @@ import org.scalatest.{BeforeAndAfterAll, Matchers, TestData, WordSpec}
 import org.scalatestplus.play.OneAppPerTest
 import play.api.Configuration
 import play.api.inject.guice.GuiceApplicationBuilder
-import uk.gov.hmrc.teamsandrepositories.DataGetter.DataLoaderFunction
+import uk.gov.hmrc.teamsandrepositories.DataGetterPersister.DataLoaderPersisterFunction
 import uk.gov.hmrc.teamsandrepositories.config.CacheConfig
 
 import scala.concurrent.{Future, Promise}
@@ -61,7 +61,7 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec
     override def teamsCacheDuration: FiniteDuration = FiniteDuration(100, TimeUnit.SECONDS)
   }
 
-  def withCache[T](dataGetter:DataGetter[T], testConfig:CacheConfig = testConfig)(block: (MemoryCachedRepositoryDataSource[T]) => Unit): Unit ={
+  def withCache[T](dataGetter:DataGetterPersister[T], testConfig:CacheConfig = testConfig)(block: (MemoryCachedRepositoryDataSource[T]) => Unit): Unit ={
     val cache = new MemoryCachedRepositoryDataSource(dataGetter, () => LocalDateTime.now())
     block(cache)
   }
@@ -71,8 +71,8 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec
     "return an uncompleted future when called before the cache has been populated" in {
       val promise1 = Promise[Seq[String]]()
 
-      val testDataGetter = new DataGetter[String] {
-        override val runner: () => Future[Seq[String]] = () => promise1.future
+      val testDataGetter = new DataGetterPersister[String] {
+        override val run: () => Future[Seq[String]] = () => promise1.future
       }
 
       withCache[String](testDataGetter){ cache =>
@@ -86,8 +86,8 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec
 
       val cachedData = Iterator[Promise[Seq[String]]](promise1, promise2).map(_.future)
 
-      val testDataGetter = new DataGetter[String] {
-        override val runner: () => Future[Seq[String]] = () => cachedData.next
+      val testDataGetter = new DataGetterPersister[String] {
+        override val run: () => Future[Seq[String]] = () => cachedData.next
       }
 
       withCache(testDataGetter) { cache =>
@@ -110,8 +110,8 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec
 
       val cachedData = Iterator[Promise[Seq[String]]](promise1, promise2).map(_.future)
 
-      val testDataGetter = new DataGetter[String] {
-        override val runner: () => Future[Seq[String]] = () => cachedData.next
+      val testDataGetter = new DataGetterPersister[String] {
+        override val run: () => Future[Seq[String]] = () => cachedData.next
       }
 
       withCache(testDataGetter) { cache =>
@@ -138,8 +138,8 @@ class TestableCachingRepositoryDataSourceSpec extends WordSpec
 
       val cachedData = Iterator[Promise[Seq[String]]](promise1, promise2).map(_.future)
 
-      val testDataGetter = new DataGetter[String] {
-        override val runner: () => Future[Seq[String]] = () => cachedData.next
+      val testDataGetter = new DataGetterPersister[String] {
+        override val run: () => Future[Seq[String]] = () => cachedData.next
       }
 
       withCache(testDataGetter) { cache =>

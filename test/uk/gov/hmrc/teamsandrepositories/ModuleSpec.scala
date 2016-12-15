@@ -45,9 +45,9 @@ class ModuleSpec
 
       val guiceInjector = application.injector.instanceOf(classOf[Injector])
 
-      val key = Key.get(new TypeLiteral[DataGetter[TeamRepositories]]() {})
+      val key = Key.get(new TypeLiteral[DataGetterPersister[TeamRepositories]]() {})
 
-      guiceInjector.getInstance(key).isInstanceOf[FileDataGetter] shouldBe(true)
+      guiceInjector.getInstance(key).isInstanceOf[FileDataGetterPersister] shouldBe(true)
 
     }
 
@@ -91,9 +91,9 @@ class ModuleSpec
 
     val guiceInjector = application.injector.instanceOf(classOf[Injector])
 
-    val key = Key.get(new TypeLiteral[DataGetter[TeamRepositories]]() {})
+    val key = Key.get(new TypeLiteral[DataGetterPersister[TeamRepositories]]() {})
 
-    guiceInjector.getInstance(key).isInstanceOf[GithubDataGetter] shouldBe (true)
+    guiceInjector.getInstance(key).isInstanceOf[GithubDataGetterPersister] shouldBe (true)
   }
 
 

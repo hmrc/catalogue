@@ -24,10 +24,12 @@ import java.util.concurrent.Executors
 import akka.actor.ActorSystem
 import com.google.inject.{Inject, Singleton}
 import play.Logger
-import play.api.Configuration
+import play.api.{Application, Configuration, Play}
 import play.api.libs.json.Json.JsValueWrapper
 import play.api.libs.json._
 import play.api.mvc.{Results, _}
+import play.modules.reactivemongo.{MongoDbConnection, ReactiveMongoComponent}
+import uk.gov.hmrc.mongo.MongoConnector
 import uk.gov.hmrc.play.microservice.controller.BaseController
 import uk.gov.hmrc.teamsandrepositories.config.{UrlTemplatesProvider, _}
 
@@ -91,11 +93,12 @@ object BlockingIOExecutionContext {
 
 
 @Singleton
-class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDataSource[TeamRepositories],
+class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDataSource[Boolean],
                                             cacheConfig: CacheConfig,
                                             urlTemplatesProvider: UrlTemplatesProvider,
                                             configuration: Configuration,
-                                            actorSystem: ActorSystem) extends BaseController {
+                                            actorSystem: ActorSystem,
+                                            mongoConnector: MongoConnector) extends BaseController {
 
   import TeamRepositoryWrapper._
   import Repository._
@@ -116,63 +119,72 @@ class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDa
     dataLoader.reload()
   }
 
+  def teamsReposRepository = new MongoTeamsAndReposPersister(mongoConnector.db)
+
 
   def repositoryDetails(name: String) = Action.async { implicit request =>
-    val repoName = URLDecoder.decode(name, "UTF-8")
-    dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
-      (cachedTeams.data.findRepositoryDetails(repoName, urlTemplatesProvider.ciUrlTemplates) match {
-        case None => NotFound
-        case Some(x: RepositoryDetails) => Results.Ok(Json.toJson(x))
-      }).withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
-    }
+//    val repoName = URLDecoder.decode(name, "UTF-8")
+//    dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
+//      (cachedTeams.data.findRepositoryDetails(repoName, urlTemplatesProvider.ciUrlTemplates) match {
+//        case None => NotFound
+//        case Some(x: RepositoryDetails) => Results.Ok(Json.toJson(x))
+//      }).withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
+//    }
+    ???
   }
 
   def services() = Action.async { implicit request =>
-    dataLoader.getCachedTeamRepoMapping.map { (cachedTeams: CachedResult[Seq[TeamRepositories]]) =>
-      Ok(determineServicesResponse(request, cachedTeams.data))
-        .withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
-    }
+//    dataLoader.getCachedTeamRepoMapping.map { (cachedTeams: CachedResult[Seq[TeamRepositories]]) =>
+//      Ok(determineServicesResponse(request, cachedTeams.data))
+//        .withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
+//    }
+    ???
   }
 
   def libraries() = Action.async { implicit request =>
-    dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
-      Ok(determineLibrariesResponse(request, cachedTeams.data))
-        .withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
-    }
+//    dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
+//      Ok(determineLibrariesResponse(request, cachedTeams.data))
+//        .withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
+//    }
+    ???
   }
 
 
   def allRepositories() = Action.async { implicit request =>
-    dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
-      Ok(Json.toJson(cachedTeams.data.allRepositories))
-        .withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
-    }
+//    dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
+//      Ok(Json.toJson(cachedTeams.data.allRepositories))
+//        .withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
+//    }
+    ???
   }
 
   def teams() = Action.async { implicit request =>
-    dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
-      Results.Ok(Json.toJson(cachedTeams.data.asTeamList(repositoriesToIgnore)))
-        .withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
-    }
+//    dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
+//      Results.Ok(Json.toJson(cachedTeams.data.asTeamList(repositoriesToIgnore)))
+//        .withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
+//    }
+    ???
   }
 
   def repositoriesByTeam(teamName: String) = Action.async { implicit request =>
-    dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
-      (cachedTeams.data.asTeamRepositoryNameList(teamName) match {
-        case None => NotFound
-        case Some(x) => Results.Ok(Json.toJson(x.map { case (t, v) => (t.toString, v) }))
-      }).withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
-    }
+//    dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
+//      (cachedTeams.data.asTeamRepositoryNameList(teamName) match {
+//        case None => NotFound
+//        case Some(x) => Results.Ok(Json.toJson(x.map { case (t, v) => (t.toString, v) }))
+//      }).withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
+//    }
+    ???
   }
 
 
   def repositoriesWithDetailsByTeam(teamName: String) = Action.async { implicit request =>
-    dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
-      (cachedTeams.data.findTeam(teamName, repositoriesToIgnore) match {
-        case None => NotFound
-        case Some(x) => Results.Ok(Json.toJson(x))
-      }).withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
-    }
+//    dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
+//      (cachedTeams.data.findTeam(teamName, repositoriesToIgnore) match {
+//        case None => NotFound
+//        case Some(x) => Results.Ok(Json.toJson(x))
+//      }).withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
+//    }
+    ???
   }
 
   def reloadCache() = Action {

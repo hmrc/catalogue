@@ -32,7 +32,7 @@ object TeamRepositoryWrapper {
 
   implicit class TeamRepositoryWrapper(teamRepos: Seq[TeamRepositories]) {
 
-    def asTeamList(repositoriesToIgnore: List[String]) =
+    def asTeamList(repositoriesToIgnore: List[String]): Seq[Team] =
       teamRepos.map(_.teamName).map { tn =>
         val repos: Seq[GitRepository] = teamRepos.filter(_.teamName == tn).flatMap(_.repositories)
         val team = Team(name = tn, repos = None)

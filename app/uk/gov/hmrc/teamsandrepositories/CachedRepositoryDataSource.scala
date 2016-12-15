@@ -9,14 +9,15 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
 
 
-trait CachedRepositoryDataSource[T] {
-  def getCachedTeamRepoMapping: Future[CachedResult[T]]
-
-  def reload(): Unit
-}
+//trait CachedRepositoryDataSource[T] {
+//  def getCachedTeamRepoMapping: Future[CachedResult[T]]
+//
+//  def reload(): Unit
+//}
 
 @Singleton
-class MemoryCachedRepositoryDataSource[T] @Inject()(dataGetter: DataGetter[T],
+class MemoryCachedRepositoryDataSource[T] @Inject()(dataGetterPersister: DataGetterPersister[T],
+                                                    mongoConnector: MongoConnector,
                                                     timeStamp: () => LocalDateTime) /*  extends CachedRepositoryDataSource[T] */ {
 
   private var cachedData: Option[CachedResult[Seq[T]]] = None
@@ -24,14 +25,13 @@ class MemoryCachedRepositoryDataSource[T] @Inject()(dataGetter: DataGetter[T],
 
   import ExecutionContext.Implicits._
 
-  fetchData()
+  //!@  fetchData()
 
   private def fromSource() =
-    dataGetter.runner().map { d => {
+    dataGetterPersister.run(MongoTeamsAndReposPersister(mongoConnector.db)).map { d =>
       val stamp = timeStamp()
       Logger.debug(s"Cache reloaded at $stamp")
       new CachedResult(d, stamp)
-    }
     }
 
   def getCachedTeamRepoMapping: Future[CachedResult[Seq[T]]] = {
