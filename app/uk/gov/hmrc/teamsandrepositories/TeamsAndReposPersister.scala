@@ -18,7 +18,7 @@ package uk.gov.hmrc.teamsandrepositories
 
 import java.time.{LocalDateTime, ZoneOffset}
 
-import com.google.inject.Singleton
+import com.google.inject.{Inject, Singleton}
 import play.api.libs.json._
 import reactivemongo.api.DB
 import reactivemongo.api.commands.WriteResult
@@ -65,10 +65,11 @@ trait TeamsAndReposPersister {
   def clearAllData: Future[Boolean]
 }
 
-case class MongoTeamsAndReposPersister(mongo: () => DB)
+@Singleton
+case class MongoTeamsAndReposPersister @Inject()(mongoConnector: MongoConnector)
   extends ReactiveRepository[PersistedTeamAndRepositories, BSONObjectID](
     collectionName = "teamsAndRepositories",
-    mongo = mongo,
+    mongo = mongoConnector.db,
     domainFormat = PersistedTeamAndRepositories.formats) with TeamsAndReposPersister {
 
 

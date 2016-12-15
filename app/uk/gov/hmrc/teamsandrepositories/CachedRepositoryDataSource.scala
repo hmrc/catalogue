@@ -17,7 +17,7 @@ import scala.util.{Failure, Success}
 
 @Singleton
 class MemoryCachedRepositoryDataSource[T] @Inject()(dataGetterPersister: DataGetterPersister[T],
-                                                    mongoConnector: MongoConnector,
+                                                    mongoTeamsAndReposPersister: MongoTeamsAndReposPersister,
                                                     timeStamp: () => LocalDateTime) /*  extends CachedRepositoryDataSource[T] */ {
 
   private var cachedData: Option[CachedResult[Seq[T]]] = None
@@ -28,7 +28,7 @@ class MemoryCachedRepositoryDataSource[T] @Inject()(dataGetterPersister: DataGet
   //!@  fetchData()
 
   private def fromSource() =
-    dataGetterPersister.run(MongoTeamsAndReposPersister(mongoConnector.db)).map { d =>
+    dataGetterPersister.run(mongoTeamsAndReposPersister).map { d =>
       val stamp = timeStamp()
       Logger.debug(s"Cache reloaded at $stamp")
       new CachedResult(d, stamp)

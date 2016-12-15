@@ -25,6 +25,7 @@ import uk.gov.hmrc.teamsandrepositories.RepoType._
 import uk.gov.hmrc.teamsandrepositories.RetryStrategy._
 import uk.gov.hmrc.teamsandrepositories.config.GithubConfig
 
+import scala.collection.immutable.Seq
 import scala.concurrent.Future
 
 
@@ -63,7 +64,7 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig, gh: Git
   implicit val teamRepositoryFormats = Json.format[TeamRepositories]
 
   val retries: Int = 5
-  val initialDuration: Double = 10
+  val initialDuration: Double = 50
 
 //  override def getTeamRepoMapping: Future[Seq[TeamRepositories]] =
 //    exponentialRetry(retries, initialDuration) {
@@ -100,7 +101,7 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig, gh: Git
       }
 
     exponentialRetry(retries, initialDuration) {
-      gh.getOrganisations.flatMap { orgs =>
+      gh.getOrganisations.flatMap { (orgs: Seq[GhOrganisation]) =>
         Future.sequence(orgs.map(traverseOrganisation)).map {
           _.flatten
         }
@@ -210,6 +211,6 @@ class CompositeRepositoryDataSource(val dataSources: List[RepositoryDataSource])
       //      flattened.groupBy(_.teamName).map { case (name, teams) =>
       //        TeamRepositories(name, teams.flatMap(t => t.repositories).sortBy(_.name))
       //      }.toList
-      ???
+      flattened
     }
 }

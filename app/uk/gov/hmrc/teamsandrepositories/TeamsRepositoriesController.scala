@@ -19,6 +19,7 @@ package uk.gov.hmrc.teamsandrepositories
 import java.net.URLDecoder
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneId, ZonedDateTime}
+import java.util.Date
 import java.util.concurrent.Executors
 
 import akka.actor.ActorSystem
@@ -49,7 +50,8 @@ case class RepositoryDetails(name: String,
                              teamNames: Seq[String],
                              githubUrls: Seq[Link],
                              ci: Seq[Link] = Seq.empty,
-                             environments: Seq[Environment] = Seq.empty)
+                             environments: Seq[Environment] = Seq.empty,
+                             updateTime:Option[LocalDateTime])
 
 case class Repository(name: String, createdAt: Long, lastUpdatedAt: Long, repoType : RepoType.RepoType)
 
@@ -98,7 +100,7 @@ class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDa
                                             urlTemplatesProvider: UrlTemplatesProvider,
                                             configuration: Configuration,
                                             actorSystem: ActorSystem,
-                                            mongoConnector: MongoConnector) extends BaseController {
+                                            mongoTeamsAndReposPersister: MongoTeamsAndReposPersister) extends BaseController {
 
   import TeamRepositoryWrapper._
   import Repository._
@@ -119,19 +121,31 @@ class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDa
     dataLoader.reload()
   }
 
-  def teamsReposRepositoryPersister = MongoTeamsAndReposPersister(mongoConnector.db)
+//  def teamsReposRepositoryPersister = MongoTeamsAndReposPersister(mongoConnector.db)
+
 
 
   def repositoryDetails(name: String) = Action.async { implicit request =>
+    val repoName = URLDecoder.decode(name, "UTF-8")
+    mongoTeamsAndReposPersister.getAllTeamAndRepos.map { allTeamAndRepos =>
+      allTeamAndRepos.findRepositoryDetails(repoName, urlTemplatesProvider.ciUrlTemplates) match {
+        case None =>
+          NotFound
+        case Some(x: RepositoryDetails) =>
+          Ok(Json.toJson(x)).withHeaders(CacheTimestampHeaderName -> format(x.updateTime))
+      }
+    }
+  }
+
+//  def repositoryDetailsOld(name: String) = Action.async { implicit request =>
 //    val repoName = URLDecoder.decode(name, "UTF-8")
-//    dataLoader.getCachedTeamRepoMapping.map { cachedTeams =>
-//      (cachedTeams.data.findRepositoryDetails(repoName, urlTemplatesProvider.ciUrlTemplates) match {
+//    mongoTeamsAndReposPersister.getAllTeamAndRepos.map { allTeamAndRepos =>
+//      (allTeamAndRepos.findRepositoryDetails(repoName, urlTemplatesProvider.ciUrlTemplates) match {
 //        case None => NotFound
 //        case Some(x: RepositoryDetails) => Results.Ok(Json.toJson(x))
-//      }).withHeaders(CacheTimestampHeaderName -> format(cachedTeams.time))
+//      }).withHeaders(CacheTimestampHeaderName -> format(allTeamAndRepos.time))
 //    }
-    ???
-  }
+//  }
 
   def services() = Action.async { implicit request =>
 //    dataLoader.getCachedTeamRepoMapping.map { (cachedTeams: CachedResult[Seq[TeamRepositories]]) =>
@@ -197,14 +211,18 @@ class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDa
     DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.of(dateTime, ZoneId.of("GMT")))
   }
 
-  private def determineServicesResponse(request: Request[AnyContent], data: Seq[TeamRepositories]): JsValue =
+  private def format(dateTime: Option[LocalDateTime]): String = {
+    dateTime.fold("Not Available")(format)
+  }
+
+  private def determineServicesResponse(request: Request[AnyContent], data: Seq[PersistedTeamAndRepositories]): JsValue =
     if (request.getQueryString("details").nonEmpty)
       Json.toJson(data.asRepositoryDetailsList(RepoType.Deployable, urlTemplatesProvider.ciUrlTemplates))
     else if (request.getQueryString("teamDetails").nonEmpty)
       Json.toJson(data.asRepositoryToTeamNameList())
     else Json.toJson(data.asServiceRepositoryList)
 
-  private def determineLibrariesResponse(request: Request[AnyContent], data: Seq[TeamRepositories]) = {
+  private def determineLibrariesResponse(request: Request[AnyContent], data: Seq[PersistedTeamAndRepositories]) = {
     if (request.getQueryString("details").nonEmpty)
       Json.toJson(data.asRepositoryDetailsList(RepoType.Library, urlTemplatesProvider.ciUrlTemplates))
     else
