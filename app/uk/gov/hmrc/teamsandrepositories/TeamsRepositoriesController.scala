@@ -119,7 +119,7 @@ class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDa
     dataLoader.reload()
   }
 
-  def teamsReposRepository = new MongoTeamsAndReposPersister(mongoConnector.db)
+  def teamsReposRepositoryPersister = MongoTeamsAndReposPersister(mongoConnector.db)
 
 
   def repositoryDetails(name: String) = Action.async { implicit request =>
