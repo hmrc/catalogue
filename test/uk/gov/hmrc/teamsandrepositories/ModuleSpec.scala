@@ -21,7 +21,7 @@ class ModuleSpec
   private val mockEnv = mock[play.api.Environment]
 
   "Play module loading from file" should {
-    "give File when conf is on" in {
+    "give File when conf is on" ignore {
 
       val tempFile = File.createTempFile("test", "file")
 

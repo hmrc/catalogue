@@ -108,7 +108,7 @@ class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDa
   implicit val serviceFormats = Json.format[RepositoryDetails]
 
 
-  def repositoryDetails(name: String) = Action.async { implicit request =>
+  def repositoryDetails(name: String) = Action.async {
     val repoName = URLDecoder.decode(name, "UTF-8")
 
     mongoTeamsAndReposPersister.getAllTeamAndRepos.map { case (allTeamsAndRepos, timestamp) =>
@@ -137,7 +137,7 @@ class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDa
   }
 
 
-  def allRepositories() = Action.async { implicit request =>
+  def allRepositories() = Action.async {
     mongoTeamsAndReposPersister.getAllTeamAndRepos.map { case (allTeamsAndRepos, timestamp) =>
       Ok(Json.toJson(allTeamsAndRepos.allRepositories))
         .withHeaders(CacheTimestampHeaderName -> format(timestamp))
@@ -151,7 +151,7 @@ class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDa
     }
   }
 
-  def repositoriesByTeam(teamName: String) = Action.async { implicit request =>
+  def repositoriesByTeam(teamName: String) = Action.async {
     mongoTeamsAndReposPersister.getAllTeamAndRepos.map { case (allTeamsAndRepos, timestamp) =>
 
       (allTeamsAndRepos.asTeamRepositoryNameList(teamName) match {
@@ -162,7 +162,7 @@ class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDa
   }
 
 
-  def repositoriesWithDetailsByTeam(teamName: String) = Action.async { implicit request =>
+  def repositoriesWithDetailsByTeam(teamName: String) = Action.async {
     mongoTeamsAndReposPersister.getAllTeamAndRepos.map { case (allTeamsAndRepos, timestamp) =>
 
       (allTeamsAndRepos.findTeam(teamName, repositoriesToIgnore) match {
