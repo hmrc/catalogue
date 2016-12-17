@@ -40,7 +40,7 @@ with Matchers
   }
 
   "update" should {
-    "update already existing team" in {
+    "update already existing key" in {
 
       val now: LocalDateTime = LocalDateTime.now()
       val oneHourLater = now.plusHours(1)
@@ -55,6 +55,25 @@ with Matchers
       val updated = await(mongoUpdateTimePersister.get(key))
 
       updated.value.timestamp.format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")) shouldBe oneHourLater.format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"))
+
+    }
+
+  }
+  "remove" should {
+    "remove existing key" in {
+
+      val now: LocalDateTime = LocalDateTime.now()
+
+      val key = "teamsAndReposUpdateKey"
+
+      await(mongoUpdateTimePersister.update(KeyAndTimestamp(key, now)))
+
+      val errors = await(mongoUpdateTimePersister.remove(key))
+
+
+      val removed = await(mongoUpdateTimePersister.get(key))
+
+      removed shouldBe None
 
     }
 

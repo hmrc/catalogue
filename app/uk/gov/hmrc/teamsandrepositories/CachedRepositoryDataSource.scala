@@ -17,8 +17,8 @@ import scala.util.{Failure, Success}
 
 @Singleton
 class MemoryCachedRepositoryDataSource[T] @Inject()(dataGetterPersister: DataGetterPersister[T],
-                                                    mongoTeamsAndReposPersister: MongoTeamsAndReposPersister,
-                                                    timeStamp: () => LocalDateTime) /*  extends CachedRepositoryDataSource[T] */ {
+                                                    mongoTeamsAndReposPersister: TeamsAndReposPersister,
+                                                    timeStamp: () => LocalDateTime) {
 
   private var cachedData: Option[CachedResult[Seq[T]]] = None
   private val initialPromise = Promise[CachedResult[Seq[T]]]()

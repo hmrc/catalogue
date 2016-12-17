@@ -81,10 +81,10 @@ class MongoTeamsAndRepositoriesPersisterSpec extends UnitSpec with LoneElement w
 
       val teamAndRepositories1 = PersistedTeamAndRepositories("test-team", now, List(gitRepository1, gitRepository2))
       await(mongoTeamsAndReposPersister.add(teamAndRepositories1))
-      val all = await(mongoTeamsAndReposPersister.allTeamsAndRepositories)
+      val all = await(mongoTeamsAndReposPersister.getAllTeamAndRepos0)
 
-      all.values.flatten.size shouldBe 1
-      val teamAndRepositories: PersistedTeamAndRepositories = all.values.flatten.loneElement
+      all.size shouldBe 1
+      val teamAndRepositories: PersistedTeamAndRepositories = all.loneElement
 
       teamAndRepositories.teamName shouldBe "test-team"
       teamAndRepositories.time.format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")) shouldBe now.format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"))
@@ -108,9 +108,9 @@ class MongoTeamsAndRepositoriesPersisterSpec extends UnitSpec with LoneElement w
       val teamAndRepositories2 = PersistedTeamAndRepositories("test-team", oneHourLater, List(gitRepository2))
       await(mongoTeamsAndReposPersister.update(teamAndRepositories2))
 
-      val allUpdated = await(mongoTeamsAndReposPersister.allTeamsAndRepositories)
+      val allUpdated = await(mongoTeamsAndReposPersister.getAllTeamAndRepos0)
       allUpdated.size shouldBe 1
-      val updatedDeployment: PersistedTeamAndRepositories = allUpdated.values.flatten.loneElement
+      val updatedDeployment: PersistedTeamAndRepositories = allUpdated.loneElement
 
       updatedDeployment.teamName shouldBe "test-team"
       updatedDeployment.time.format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")) shouldBe oneHourLater.format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"))

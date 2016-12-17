@@ -50,19 +50,45 @@ object PersistedTeamAndRepositories {
 
 }
 
+//!@ test this
+case class TeamsAndReposPersister @Inject()(mongoTeamsAndReposPersister: MongoTeamsAndReposPersister, mongoUpdateTimePersister: MongoUpdateTimePersister) {
 
-trait TeamsAndReposPersister {
-  def add(teamsAndRepositories: PersistedTeamAndRepositories): Future[Boolean]
+  val teamsAndRepositoriesTimestampKeyName = "teamsAndRepositories.updated"
 
-  def update(teamsAndRepositories: PersistedTeamAndRepositories): Future[Boolean]
+  def add(teamsAndRepositories: PersistedTeamAndRepositories): Future[Boolean] = {
+    mongoTeamsAndReposPersister.add(teamsAndRepositories)
+  }
 
-  def allTeamsAndRepositories: Future[Map[String, Seq[PersistedTeamAndRepositories]]]
+  def update(teamsAndRepositories: PersistedTeamAndRepositories): Future[Boolean] = {
+    mongoTeamsAndReposPersister.update(teamsAndRepositories)
+  }
 
-  def getAllTeamAndRepos: Future[Seq[PersistedTeamAndRepositories]]
+  def getAllTeamAndReposOld: Future[Seq[PersistedTeamAndRepositories]] = {
+    mongoTeamsAndReposPersister.getAllTeamAndRepos0
+  }
 
-  //!@  def getForService(serviceName: String): Future[Option[Seq[TeamAndRepos]]]
+  def getAllTeamAndRepos: Future[(Seq[PersistedTeamAndRepositories], Option[LocalDateTime])] = {
+    for {
+      teamsAndRepos <- mongoTeamsAndReposPersister.getAllTeamAndRepos0
+      timestamp <- mongoUpdateTimePersister.get(teamsAndRepositoriesTimestampKeyName)
+    } yield (teamsAndRepos, timestamp.map(_.timestamp))
 
-  def clearAllData: Future[Boolean]
+  }
+
+
+//  def getAllTeamAndRepos: Future[Seq[PersistedTeamAndRepositories]] = {
+//    mongoTeamsAndReposPersister.getAllTeamAndRepos
+//  }
+
+  def clearAllData: Future[Boolean] = {
+    mongoTeamsAndReposPersister.clearAllData
+    mongoUpdateTimePersister.remove(teamsAndRepositoriesTimestampKeyName)
+  }
+
+  def updateTimestamp(timestamp: LocalDateTime) = {
+    mongoUpdateTimePersister.update(KeyAndTimestamp(teamsAndRepositoriesTimestampKeyName, timestamp))
+  }
+
 }
 
 @Singleton
@@ -70,7 +96,7 @@ case class MongoTeamsAndReposPersister @Inject()(mongoConnector: MongoConnector)
   extends ReactiveRepository[PersistedTeamAndRepositories, BSONObjectID](
     collectionName = "teamsAndRepositories",
     mongo = mongoConnector.db,
-    domainFormat = PersistedTeamAndRepositories.formats) with TeamsAndReposPersister {
+    domainFormat = PersistedTeamAndRepositories.formats) {
 
 
   override def ensureIndexes(implicit ec: ExecutionContext): Future[Seq[Boolean]] =
@@ -81,20 +107,8 @@ case class MongoTeamsAndReposPersister @Inject()(mongoConnector: MongoConnector)
     )
 
 
-//  def upsert(teamAndRepos: PersistedTeamAndRepositories): Future[Boolean] = {
-//    //!@
-//    println(s"---> upserting: $teamAndRepos")
-//    withTimerAndCounter("mongo.upsert") {
-//      for {
-//        _ <- collection.remove(query = Json.obj("teamName" -> Json.toJson(teamAndRepos.teamName)))
-//        addResult <- add(teamAndRepos)
-//      } yield addResult
-//    }
-//  }
-
   def update(teamAndRepos: PersistedTeamAndRepositories): Future[Boolean] = {
-    //!@
-    println(s"---> updating: $teamAndRepos")
+
     withTimerAndCounter("mongo.update") {
       for {
         update <- collection.update(selector = Json.obj("teamName" -> Json.toJson(teamAndRepos.teamName)), update = teamAndRepos, upsert = true)
@@ -104,7 +118,6 @@ case class MongoTeamsAndReposPersister @Inject()(mongoConnector: MongoConnector)
       }
     }
   }
-
 
 
   def add(teamsAndRepository: PersistedTeamAndRepositories): Future[Boolean] = {
@@ -117,27 +130,67 @@ case class MongoTeamsAndReposPersister @Inject()(mongoConnector: MongoConnector)
   }
 
 
-  override def allTeamsAndRepositories: Future[Map[String, Seq[PersistedTeamAndRepositories]]] = findAll().map { all => all.groupBy(_.teamName) }
-
-  //  def getForService(serviceName: String): Future[Option[Seq[TeamAndRepos]]] = {
-  //
-  //    withTimerAndCounter("mongo.read") {
-  //      find("name" -> BSONDocument("$eq" -> serviceName)) map {
-  //        case Nil => None
-  //        case data => Some(data.sortBy(_.productionDate.toEpochSecond(ZoneOffset.UTC)).reverse)
-  //      }
-  //    }
-  //  }
+  def getAllTeamAndRepos0: Future[Seq[PersistedTeamAndRepositories]] = findAll()
 
   def clearAllData = super.removeAll().map(!_.hasErrors)
 
-  def getAllTeamAndRepos: Future[Seq[PersistedTeamAndRepositories]] = collection
-    .find(BSONDocument.empty)
-    //    .sort(Json.obj("teamName" -> JsNumber(-1)))
-    .cursor[PersistedTeamAndRepositories]()
-    .collect[List]()
+//  def getAllTeamAndRepos: Future[Seq[PersistedTeamAndRepositories]] = collection
+//    .find(BSONDocument.empty)
+//    .cursor[PersistedTeamAndRepositories]()
+//    .collect[List]()
 
 }
 
+case class KeyAndTimestamp(keyName: String, timestamp: LocalDateTime)
+
+object KeyAndTimestamp {
+  implicit val localDateTimeRead: Reads[LocalDateTime] =
+    __.read[Long].map { dateTime => LocalDateTime.ofEpochSecond(dateTime, 0, ZoneOffset.UTC) }
+
+  implicit val localDateTimeWrite: Writes[LocalDateTime] = new Writes[LocalDateTime] {
+    def writes(dateTime: LocalDateTime): JsValue = JsNumber(value = dateTime.atOffset(ZoneOffset.UTC).toEpochSecond)
+  }
+
+  implicit val formats = Json.format[KeyAndTimestamp]
+}
+
+
+@Singleton
+case class MongoUpdateTimePersister @Inject()(mongoConnector: MongoConnector)
+  extends ReactiveRepository[PersistedTeamAndRepositories, BSONObjectID](
+    collectionName = "updateTime",
+    mongo = mongoConnector.db,
+    domainFormat = PersistedTeamAndRepositories.formats) {
+
+  private val keyFieldName = "keyName"
+
+  override def ensureIndexes(implicit ec: ExecutionContext): Future[Seq[Boolean]] =
+    Future.sequence(
+      Seq(
+        collection.indexesManager.ensure(Index(Seq(keyFieldName -> IndexType.Hashed), name = Some(keyFieldName + "Idx")))
+      )
+    )
+
+  def get(keyName: String): Future[Option[KeyAndTimestamp]] = {
+    withTimerAndCounter("mongo.timestamp.get") {
+      collection.find(Json.obj(keyFieldName -> Json.toJson(keyName)))
+        .cursor[KeyAndTimestamp]()
+        .collect[List]().map(_.headOption)
+    }
+  }
+
+  def update(keyAndTimestamp: KeyAndTimestamp): Future[Boolean] = {
+    withTimerAndCounter("mongo.timestamp.update") {
+      for {
+        update <- collection.update(selector = Json.obj(keyFieldName -> Json.toJson(keyAndTimestamp.keyName)), update = keyAndTimestamp, upsert = true)
+      } yield update match {
+        case lastError if lastError.inError => throw lastError
+        case _ => true
+      }
+    }
+  }
+
+  def remove(keyName: String): Future[Boolean] = super.remove(keyFieldName -> Json.toJson(keyName)).map(!_.hasErrors)
+}
 
 

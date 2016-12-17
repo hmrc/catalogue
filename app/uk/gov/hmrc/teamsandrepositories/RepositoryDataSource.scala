@@ -27,6 +27,7 @@ import uk.gov.hmrc.teamsandrepositories.config.GithubConfig
 
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 
 case class TeamRepositories(teamName: String, repositories: List[GitRepository]) {
@@ -85,6 +86,9 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig, gh: Git
           _.flatten
         }
       }
+    }.andThen {
+      case Failure(t) => throw t
+      case Success(_) => persister.updateTimestamp(LocalDateTime.now())
     }
   }
 
