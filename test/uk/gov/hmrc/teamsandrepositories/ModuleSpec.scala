@@ -91,7 +91,7 @@ class ModuleSpec
 
     val guiceInjector = application.injector.instanceOf(classOf[Injector])
 
-    val key = Key.get(new TypeLiteral[DataGetterPersister[Boolean]]() {})
+    val key = Key.get(new TypeLiteral[DataGetterPersister[PersistedTeamAndRepositories]]() {})
 
     guiceInjector.getInstance(key).isInstanceOf[GithubDataGetterPersister] shouldBe (true)
   }

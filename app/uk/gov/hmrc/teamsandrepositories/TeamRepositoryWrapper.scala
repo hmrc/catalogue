@@ -17,7 +17,7 @@
 package uk.gov.hmrc.teamsandrepositories
 
 import java.net.URLDecoder
-import java.time.{LocalDateTime, ZoneOffset}
+import java.time.LocalDateTime
 
 import uk.gov.hmrc.teamsandrepositories.RepoType.RepoType
 import uk.gov.hmrc.teamsandrepositories.config.{UrlTemplate, UrlTemplates}
@@ -29,7 +29,7 @@ object TeamRepositoryWrapper {
                                        lastActiveDate: Option[Long] = None,
                                        firstServiceCreationDate: Option[Long] = None)
 
-  private case class RepositoriesToTeam(repositories: Seq[GitRepository], teamName: String, updateTime: LocalDateTime)
+  private case class RepositoriesToTeam(repositories: Seq[GitRepository], teamName: String)
 
   implicit class TeamRepositoryWrapper(teamRepos: Seq[PersistedTeamAndRepositories]) {
 
@@ -166,7 +166,7 @@ object TeamRepositoryWrapper {
       for {
         teamAndRepositories <- data
         repositories <- teamAndRepositories.repositories.groupBy(_.name).values
-      } yield RepositoriesToTeam(repositories, teamAndRepositories.teamName, teamAndRepositories.time)
+      } yield RepositoriesToTeam(repositories, teamAndRepositories.teamName)
   }
 
   def repoGroupToRepositoryDetails(repoType: RepoType,

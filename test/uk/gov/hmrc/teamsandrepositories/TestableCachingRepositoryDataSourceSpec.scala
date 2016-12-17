@@ -1,39 +1,39 @@
-/*
- * Copyright 2016 HM Revenue & Customs
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-package uk.gov.hmrc.teamsandrepositories
-
-import java.time.LocalDateTime
-import java.util.concurrent.TimeUnit
-
-import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.mock.MockitoSugar
-import org.scalatest.{BeforeAndAfterAll, Matchers, TestData, WordSpec}
-import org.scalatestplus.play.OneAppPerTest
-import play.api.Configuration
-import play.api.inject.guice.GuiceApplicationBuilder
-import uk.gov.hmrc.teamsandrepositories.DataGetterPersister.DataLoaderPersisterFunction
-import uk.gov.hmrc.teamsandrepositories.config.CacheConfig
-
-import scala.concurrent.{Future, Promise}
-import scala.concurrent.duration.FiniteDuration
-import scala.util.Success
-
-
-//!@ need?
+///*
+// * Copyright 2016 HM Revenue & Customs
+// *
+// * Licensed under the Apache License, Version 2.0 (the "License");
+// * you may not use this file except in compliance with the License.
+// * You may obtain a copy of the License at
+// *
+// *     http://www.apache.org/licenses/LICENSE-2.0
+// *
+// * Unless required by applicable law or agreed to in writing, software
+// * distributed under the License is distributed on an "AS IS" BASIS,
+// * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// * See the License for the specific language governing permissions and
+// * limitations under the License.
+// */
+//
+//package uk.gov.hmrc.teamsandrepositories
+//
+//import java.time.LocalDateTime
+//import java.util.concurrent.TimeUnit
+//
+//import org.scalatest.concurrent.{Eventually, ScalaFutures}
+//import org.scalatest.mock.MockitoSugar
+//import org.scalatest.{BeforeAndAfterAll, Matchers, TestData, WordSpec}
+//import org.scalatestplus.play.OneAppPerTest
+//import play.api.Configuration
+//import play.api.inject.guice.GuiceApplicationBuilder
+//import uk.gov.hmrc.teamsandrepositories.DataGetterPersister.DataLoaderPersisterFunction
+//import uk.gov.hmrc.teamsandrepositories.config.CacheConfig
+//
+//import scala.concurrent.{Future, Promise}
+//import scala.concurrent.duration.FiniteDuration
+//import scala.util.Success
+//import play.api.inject.bind
+//
+////!@ need? leaning towards no (17/12/16)
 //class TestableCachingRepositoryDataSourceSpec extends WordSpec
 //  with BeforeAndAfterAll
 //  with ScalaFutures
@@ -43,20 +43,22 @@ import scala.util.Success
 //  with Eventually
 //  with OneAppPerTest {
 //
+//  val mockTeamAndRepositoryPersister = mock[TeamsAndReposPersister]
 //
 //  override def newAppForTest(testData: TestData) = new GuiceApplicationBuilder()
-//      .configure(
-//        Map(
-//        "github.open.api.host" ->           "http://bla.bla",
-//        "github.open.api.user" ->           "",
-//        "github.open.api.key" ->            "",
-//        "github.enterprise.api.host" ->     "http://bla.bla",
-//        "github.enterprise.api.user" ->     "",
-//        "github.enterprise.api.key" ->      ""
-//        )
+//    .overrides(bind[TeamsAndReposPersister].toInstance(mockTeamAndRepositoryPersister))
+//    .configure(
+//      Map(
+//        "github.open.api.host" -> "http://bla.bla",
+//        "github.open.api.user" -> "",
+//        "github.open.api.key" -> "",
+//        "github.enterprise.api.host" -> "http://bla.bla",
+//        "github.enterprise.api.user" -> "",
+//        "github.enterprise.api.key" -> ""
 //      )
-//    .disable(classOf[com.kenshoo.play.metrics.PlayModule]).build()
-//
+//    )
+//    .disable(classOf[com.kenshoo.play.metrics.PlayModule])
+//    .build()
 //
 //
 //  //!@ can we remove this?
@@ -64,10 +66,11 @@ import scala.util.Success
 //    override def teamsCacheDuration: FiniteDuration = FiniteDuration(100, TimeUnit.SECONDS)
 //  }
 //
-//  def withCache[T](dataGetter:DataGetterPersister[T], testConfig:CacheConfig = testConfig)(block: (MemoryCachedRepositoryDataSource[T]) => Unit): Unit ={
-//    val cache = new MemoryCachedRepositoryDataSource(dataGetter,  ,() => LocalDateTime.now())
+//  def withCache[T](dataGetter: DataGetterPersister[T], testConfig: CacheConfig = testConfig)(block: (MemoryCachedRepositoryDataSource[T]) => Unit): Unit = {
+//    val cache = new MemoryCachedRepositoryDataSource(dataGetter, mockTeamAndRepositoryPersister, () => LocalDateTime.now())
 //    block(cache)
 //  }
+//
 //
 //  "Caching teams repository data source" should {
 //
@@ -78,7 +81,7 @@ import scala.util.Success
 //        override val run: () => Future[Seq[String]] = () => promise1.future
 //      }
 //
-//      withCache[String](testDataGetter){ cache =>
+//      withCache[String](testDataGetter) { cache =>
 //        cache.getCachedTeamRepoMapping.isCompleted shouldBe false
 //      }
 //    }

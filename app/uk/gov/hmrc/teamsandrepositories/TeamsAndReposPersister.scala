@@ -33,7 +33,6 @@ import scala.concurrent.{ExecutionContext, Future}
 
 
 case class PersistedTeamAndRepositories(teamName: String,
-                                        time: LocalDateTime,
                                         repositories: List[GitRepository])
 
 object PersistedTeamAndRepositories {
@@ -51,7 +50,7 @@ object PersistedTeamAndRepositories {
 }
 
 //!@ test this
-case class TeamsAndReposPersister @Inject()(mongoTeamsAndReposPersister: MongoTeamsAndReposPersister, mongoUpdateTimePersister: MongoUpdateTimePersister) {
+class TeamsAndReposPersister @Inject()(mongoTeamsAndReposPersister: MongoTeamsAndReposPersister, mongoUpdateTimePersister: MongoUpdateTimePersister) {
 
   val teamsAndRepositoriesTimestampKeyName = "teamsAndRepositories.updated"
 
@@ -59,7 +58,7 @@ case class TeamsAndReposPersister @Inject()(mongoTeamsAndReposPersister: MongoTe
     mongoTeamsAndReposPersister.add(teamsAndRepositories)
   }
 
-  def update(teamsAndRepositories: PersistedTeamAndRepositories): Future[Boolean] = {
+  def update(teamsAndRepositories: PersistedTeamAndRepositories): Future[PersistedTeamAndRepositories] = {
     mongoTeamsAndReposPersister.update(teamsAndRepositories)
   }
 
@@ -107,14 +106,14 @@ case class MongoTeamsAndReposPersister @Inject()(mongoConnector: MongoConnector)
     )
 
 
-  def update(teamAndRepos: PersistedTeamAndRepositories): Future[Boolean] = {
+  def update(teamAndRepos: PersistedTeamAndRepositories): Future[PersistedTeamAndRepositories] = {
 
     withTimerAndCounter("mongo.update") {
       for {
         update <- collection.update(selector = Json.obj("teamName" -> Json.toJson(teamAndRepos.teamName)), update = teamAndRepos, upsert = true)
       } yield update match {
-        case lastError if lastError.inError => throw lastError
-        case _ => true
+        case lastError if lastError.inError => throw new RuntimeException(s"failed to persist $teamAndRepos")
+        case _ => teamAndRepos
       }
     }
   }

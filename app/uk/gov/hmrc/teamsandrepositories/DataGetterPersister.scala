@@ -6,6 +6,7 @@ import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DB
 import uk.gov.hmrc.teamsandrepositories.DataGetterPersister.DataLoaderPersisterFunction
 
+
 import scala.concurrent.Future
 
 trait DataGetterPersister[T] {
@@ -23,7 +24,7 @@ class MongoConnector @Inject()(application: Application) {
   val db: () => DB = application.injector.instanceOf[ReactiveMongoComponent].mongoConnector.db
 }
 
-case class FileDataGetterPersister(run: DataLoaderPersisterFunction[Boolean]) extends DataGetterPersister[Boolean]
-case class GithubDataGetterPersister(run: DataLoaderPersisterFunction[Boolean]) extends DataGetterPersister[Boolean]
+case class FileDataGetterPersister(run: DataLoaderPersisterFunction[PersistedTeamAndRepositories]) extends DataGetterPersister[PersistedTeamAndRepositories]
+case class GithubDataGetterPersister(run: DataLoaderPersisterFunction[PersistedTeamAndRepositories]) extends DataGetterPersister[PersistedTeamAndRepositories]
 
 

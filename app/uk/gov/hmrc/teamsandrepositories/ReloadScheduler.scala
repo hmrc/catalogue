@@ -11,7 +11,7 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class ReloadScheduler @Inject()(val actorSystem: ActorSystem,
                                 applicationLifecycle: ApplicationLifecycle,
-                                dataLoader: MemoryCachedRepositoryDataSource[Boolean],
+                                dataLoader: MemoryCachedRepositoryDataSource[PersistedTeamAndRepositories],
                                 cacheConfig: CacheConfig)(implicit ec: ExecutionContext) {
 
   private val scheduledReload = actorSystem.scheduler.schedule(cacheConfig.teamsCacheDuration, cacheConfig.teamsCacheDuration) {
