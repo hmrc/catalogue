@@ -29,7 +29,7 @@ object TeamRepositoryWrapper {
                                        lastActiveDate: Option[Long] = None,
                                        firstServiceCreationDate: Option[Long] = None)
 
-  private case class RepositoriesToTeam(repositories: Seq[GitRepository], teamName: String)
+  private case class RepositoriesToTeam(repositories: Seq[GitRepository], teamName: String, updateTime: LocalDateTime)
 
   implicit class TeamRepositoryWrapper(teamRepos: Seq[PersistedTeamAndRepositories]) {
 
@@ -60,16 +60,13 @@ object TeamRepositoryWrapper {
         }.sortBy(_.name.toUpperCase)
 
     def findRepositoryDetails(repoName: String, ciUrlTemplates: UrlTemplates): Option[RepositoryDetails] = {
-      teamRepos.foldLeft((Set.empty[String], Set.empty[GitRepository], Option.empty[LocalDateTime])) { case ((ts, repos, time), tr) =>
+      teamRepos.foldLeft((Set.empty[String], Set.empty[GitRepository])) { case ((ts, repos), tr) =>
         if (tr.repositories.exists(_.name == repoName))
-          (ts + tr.teamName,
-            repos ++ tr.repositories.filter(_.name == repoName),
-            Some(tr.time))
-
-        else (ts, repos, time)
+          (ts + tr.teamName, repos ++ tr.repositories.filter(_.name == repoName))
+        else (ts, repos)
       } match {
-        case (teams, repos, time) if repos.nonEmpty =>
-          repoGroupToRepositoryDetails(primaryRepoType(repos.toSeq), repos.toSeq, teams.toSeq.sorted, ciUrlTemplates, time)
+        case (teams, repos) if repos.nonEmpty =>
+          repoGroupToRepositoryDetails(primaryRepoType(repos.toSeq), repos.toSeq, teams.toSeq.sorted, ciUrlTemplates)
         case _ => None
       }
     }
@@ -77,7 +74,7 @@ object TeamRepositoryWrapper {
     def asRepositoryDetailsList(repoType: RepoType, ciUrlTemplates: UrlTemplates): Seq[RepositoryDetails] = {
       repositoryTeams(teamRepos)
         .groupBy(_.repositories)
-        .flatMap { case (repositories, t) => repoGroupToRepositoryDetails(repoType, repositories, t.map(_.teamName), ciUrlTemplates, None) }
+        .flatMap { case (repositories, teamsAndRepos: Seq[RepositoriesToTeam]) => repoGroupToRepositoryDetails(repoType, repositories, teamsAndRepos.map(_.teamName), ciUrlTemplates) }
         .toSeq
         .sortBy(_.name.toUpperCase)
     }
@@ -167,28 +164,26 @@ object TeamRepositoryWrapper {
 
     private def repositoryTeams(data: Seq[PersistedTeamAndRepositories]): Seq[RepositoriesToTeam] =
       for {
-        team <- data
-        repositories <- team.repositories.groupBy(_.name).values
-      } yield RepositoriesToTeam(repositories, team.teamName)
+        teamAndRepositories <- data
+        repositories <- teamAndRepositories.repositories.groupBy(_.name).values
+      } yield RepositoriesToTeam(repositories, teamAndRepositories.teamName, teamAndRepositories.time)
   }
 
   def repoGroupToRepositoryDetails(repoType: RepoType,
                                    repositories: Seq[GitRepository],
                                    teamNames: Seq[String],
-                                   urlTemplates: UrlTemplates,
-                                   time: Option[LocalDateTime]): Option[RepositoryDetails] = {
+                                   urlTemplates: UrlTemplates): Option[RepositoryDetails] = {
 
     val primaryRepository = extractRepositoryGroupForType(repoType, repositories).find(_.repoType == repoType)
 
-    buildRepositoryDetails(primaryRepository, repositories, teamNames, urlTemplates, time)
+    buildRepositoryDetails(primaryRepository, repositories, teamNames, urlTemplates)
 
   }
 
   private def buildRepositoryDetails(primaryRepository: Option[GitRepository],
                                      allRepositories: Seq[GitRepository],
                                      teamNames: Seq[String],
-                                     urlTemplates: UrlTemplates,
-                                     time:Option[LocalDateTime]): Option[RepositoryDetails] = {
+                                     urlTemplates: UrlTemplates): Option[RepositoryDetails] = {
 
     primaryRepository.map { repo =>
 
@@ -208,8 +203,7 @@ object TeamRepositoryWrapper {
             githubName(repo.isInternal),
             githubDisplayName(repo.isInternal),
             repo.url)
-        },
-        updateTime = time)
+        })
 
       val repositoryForCiUrls: GitRepository = allRepositories.find(!_.isInternal).fold(repo)(identity)
 

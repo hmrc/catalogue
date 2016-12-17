@@ -23,6 +23,9 @@ class Module(environment: play.api.Environment, configuration: Configuration) ex
 
     bind(new TypeLiteral[() => LocalDateTime]() {}).toInstance(LocalDateTime.now)
 
+    bind(classOf[ReloadScheduler]).asEagerSingleton()
+
+
   }
 
   def getDataLoader(offlineMode: Boolean): DataGetterPersister[Boolean] = {
@@ -77,6 +80,7 @@ class Module(environment: play.api.Environment, configuration: Configuration) ex
     val runner: (TeamsAndReposPersister) => Future[Seq[Boolean]] = new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource)).persistTeamsAndReposMapping _
     GithubDataGetterPersister(runner)
   }
+
 //  def githubDataLoader: GithubDataGetter = {
 //    val githubConfig = new GithubConfig(configuration)
 //

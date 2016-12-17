@@ -46,7 +46,7 @@ object PersistedTeamAndRepositories {
 
   //  implicit val bsonIdFormat = ReactiveMongoFormats.objectIdFormats
   //  val gitRepositoryFormat = Json.format[Seq[GitRepository]]
-  val formats = Json.format[PersistedTeamAndRepositories]
+  implicit val formats = Json.format[PersistedTeamAndRepositories]
 
 }
 
@@ -54,9 +54,9 @@ object PersistedTeamAndRepositories {
 trait TeamsAndReposPersister {
   def add(teamsAndRepositories: PersistedTeamAndRepositories): Future[Boolean]
 
-  def upsert(teamsAndRepositories: PersistedTeamAndRepositories): Future[Boolean]
+  def update(teamsAndRepositories: PersistedTeamAndRepositories): Future[Boolean]
 
-    def allTeamsAndRepositories: Future[Map[String, Seq[PersistedTeamAndRepositories]]]
+  def allTeamsAndRepositories: Future[Map[String, Seq[PersistedTeamAndRepositories]]]
 
   def getAllTeamAndRepos: Future[Seq[PersistedTeamAndRepositories]]
 
@@ -73,23 +73,39 @@ case class MongoTeamsAndReposPersister @Inject()(mongoConnector: MongoConnector)
     domainFormat = PersistedTeamAndRepositories.formats) with TeamsAndReposPersister {
 
 
-    override def ensureIndexes(implicit ec: ExecutionContext): Future[Seq[Boolean]] =
-      Future.sequence(
-        Seq(
-          collection.indexesManager.ensure(Index(Seq("teamName" -> IndexType.Hashed), name = Some("teamNameIdx")))
-        )
+  override def ensureIndexes(implicit ec: ExecutionContext): Future[Seq[Boolean]] =
+    Future.sequence(
+      Seq(
+        collection.indexesManager.ensure(Index(Seq("teamName" -> IndexType.Hashed), name = Some("teamNameIdx")))
       )
+    )
 
 
-  def upsert(teamAndRepos: PersistedTeamAndRepositories): Future[Boolean] = {
-    println (s"---> upserting: $teamAndRepos")
+//  def upsert(teamAndRepos: PersistedTeamAndRepositories): Future[Boolean] = {
+//    //!@
+//    println(s"---> upserting: $teamAndRepos")
+//    withTimerAndCounter("mongo.upsert") {
+//      for {
+//        _ <- collection.remove(query = Json.obj("teamName" -> Json.toJson(teamAndRepos.teamName)))
+//        addResult <- add(teamAndRepos)
+//      } yield addResult
+//    }
+//  }
+
+  def update(teamAndRepos: PersistedTeamAndRepositories): Future[Boolean] = {
+    //!@
+    println(s"---> updating: $teamAndRepos")
     withTimerAndCounter("mongo.update") {
       for {
-        _ <- collection.remove(query = Json.obj("teamName" -> Json.toJson(teamAndRepos.teamName)))
-        addResult <- add(teamAndRepos)
-      } yield addResult
+        update <- collection.update(selector = Json.obj("teamName" -> Json.toJson(teamAndRepos.teamName)), update = teamAndRepos, upsert = true)
+      } yield update match {
+        case lastError if lastError.inError => throw lastError
+        case _ => true
+      }
     }
   }
+
+
 
   def add(teamsAndRepository: PersistedTeamAndRepositories): Future[Boolean] = {
     withTimerAndCounter("mongo.write") {
@@ -117,8 +133,11 @@ case class MongoTeamsAndReposPersister @Inject()(mongoConnector: MongoConnector)
 
   def getAllTeamAndRepos: Future[Seq[PersistedTeamAndRepositories]] = collection
     .find(BSONDocument.empty)
-//    .sort(Json.obj("teamName" -> JsNumber(-1)))
+    //    .sort(Json.obj("teamName" -> JsNumber(-1)))
     .cursor[PersistedTeamAndRepositories]()
     .collect[List]()
 
 }
+
+
+

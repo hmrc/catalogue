@@ -5,7 +5,9 @@ import java.time.format.DateTimeFormatter
 
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterEach, FunSpec, LoneElement, OptionValues}
-import org.scalatestplus.play.OneAppPerTest
+import org.scalatestplus.play.{OneAppPerSuite, OneAppPerTest}
+import play.api.Application
+import play.api.inject.guice.GuiceApplicationBuilder
 import uk.gov.hmrc.mongo.MongoSpecSupport
 import uk.gov.hmrc.play.test.UnitSpec
 
@@ -13,10 +15,12 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 
 
-class MongoTeamsAndRepositoriesPersisterSpec extends UnitSpec with LoneElement with MongoSpecSupport with ScalaFutures with OptionValues with BeforeAndAfterEach with OneAppPerTest {
+class MongoTeamsAndRepositoriesPersisterSpec extends UnitSpec with LoneElement with MongoSpecSupport with ScalaFutures with OptionValues with BeforeAndAfterEach with OneAppPerSuite {
 
+  implicit override lazy val app: Application =
+    new GuiceApplicationBuilder().configure(Map("mongodb.uri" -> "mongodb://localhost:27017/test-teams-and-repositories")).build()
 
-  val mongoTeamsAndReposPersister = new MongoTeamsAndReposPersister(mongo)
+  val mongoTeamsAndReposPersister = app.injector.instanceOf(classOf[MongoTeamsAndReposPersister])
 
   override def beforeEach() {
     await(mongoTeamsAndReposPersister.drop)
@@ -89,7 +93,7 @@ class MongoTeamsAndRepositoriesPersisterSpec extends UnitSpec with LoneElement w
     }
   }
 
-  "upsert" should {
+  "update" should {
     "update already existing team" in {
 
       val now: LocalDateTime = LocalDateTime.now()
@@ -102,7 +106,7 @@ class MongoTeamsAndRepositoriesPersisterSpec extends UnitSpec with LoneElement w
       await(mongoTeamsAndReposPersister.add(teamAndRepositories1))
 
       val teamAndRepositories2 = PersistedTeamAndRepositories("test-team", oneHourLater, List(gitRepository2))
-      await(mongoTeamsAndReposPersister.upsert(teamAndRepositories2))
+      await(mongoTeamsAndReposPersister.update(teamAndRepositories2))
 
       val allUpdated = await(mongoTeamsAndReposPersister.allTeamsAndRepositories)
       allUpdated.size shouldBe 1
