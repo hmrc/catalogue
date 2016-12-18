@@ -35,7 +35,7 @@ object RetryStrategy {
   def exponentialRetry[T](times: Int, duration: Double = 10)(f: => Future[T])(implicit executor: ExecutionContext): Future[T] = {
     f recoverWith { case e if times > 0 =>
       Logger.error("error making request Retrying :" , e)
-      Logger.error(s"Retrying with delay $duration attempts remaining: ${times - 1}") //!@ debug
+      Logger.debug(s"Retrying with delay $duration attempts remaining: ${times - 1}")
       delay(duration) {
         exponentialRetry(times - 1, duration * 2)(f)
       }
