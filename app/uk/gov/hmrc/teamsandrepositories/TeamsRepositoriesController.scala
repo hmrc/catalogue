@@ -89,7 +89,7 @@ object BlockingIOExecutionContext {
 
 
 @Singleton
-class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDataSource[Boolean],
+class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDataSource[PersistedTeamAndRepositories],
                                             urlTemplatesProvider: UrlTemplatesProvider,
                                             configuration: Configuration,
                                             mongoTeamsAndReposPersister: TeamsAndReposPersister) extends BaseController {

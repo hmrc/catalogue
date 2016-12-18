@@ -30,7 +30,7 @@ import scala.concurrent.Future
 
 
 
-class DataSavingController @Inject()(dataLoader: MemoryCachedRepositoryDataSource[TeamRepositories],
+class DataSavingController @Inject()(dataLoader: MemoryCachedRepositoryDataSource[PersistedTeamAndRepositories],
                                             actorSystem: ActorSystem) extends BaseController {
 
   val CacheTimestampHeaderName = "X-Cache-Timestamp"
