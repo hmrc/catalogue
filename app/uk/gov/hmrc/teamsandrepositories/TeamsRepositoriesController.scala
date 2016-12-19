@@ -194,7 +194,6 @@ class TeamsRepositoriesController @Inject()(dataReloadScheduler: DataReloadSched
       Json.toJson(data.asRepositoryToTeamNameList())
     else Json.toJson(data.asServiceRepositoryList)
 
-  //!@ add time to asRepositoryDetailsList (and may be remove the Option-ness?
   private def determineLibrariesResponse(request: Request[AnyContent], data: Seq[PersistedTeamAndRepositories]) = {
     if (request.getQueryString("details").nonEmpty)
       Json.toJson(data.asRepositoryDetailsList(RepoType.Library, urlTemplatesProvider.ciUrlTemplates))

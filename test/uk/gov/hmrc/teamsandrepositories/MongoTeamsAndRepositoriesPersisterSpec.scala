@@ -80,7 +80,7 @@ class MongoTeamsAndRepositoriesPersisterSpec extends UnitSpec with LoneElement w
 
       val teamAndRepositories1 = PersistedTeamAndRepositories("test-team", List(gitRepository1, gitRepository2))
       await(mongoTeamsAndReposPersister.add(teamAndRepositories1))
-      val all = await(mongoTeamsAndReposPersister.getAllTeamAndRepos0)
+      val all = await(mongoTeamsAndReposPersister.getAllTeamAndRepos)
 
       all.size shouldBe 1
       val teamAndRepositories: PersistedTeamAndRepositories = all.loneElement
@@ -107,7 +107,7 @@ class MongoTeamsAndRepositoriesPersisterSpec extends UnitSpec with LoneElement w
       val teamAndRepositories2 = PersistedTeamAndRepositories("test-team", List(gitRepository2))
       await(mongoTeamsAndReposPersister.update(teamAndRepositories2))
 
-      val allUpdated = await(mongoTeamsAndReposPersister.getAllTeamAndRepos0)
+      val allUpdated = await(mongoTeamsAndReposPersister.getAllTeamAndRepos)
       allUpdated.size shouldBe 1
       val updatedDeployment: PersistedTeamAndRepositories = allUpdated.loneElement
 

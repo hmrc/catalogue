@@ -32,7 +32,6 @@ import uk.gov.hmrc.teamsandrepositories.config.GithubConfig
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
 
-//!@ uncomment and fix all the tests
 class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with Matchers with DefaultPatienceConfig with MockitoSugar with SpanSugar with BeforeAndAfterEach {
 
   val now = new Date().getTime

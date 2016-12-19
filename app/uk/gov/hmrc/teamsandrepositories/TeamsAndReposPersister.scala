@@ -20,12 +20,9 @@ import java.time.{LocalDateTime, ZoneOffset}
 
 import com.google.inject.{Inject, Singleton}
 import play.api.libs.json._
-import reactivemongo.api.DB
-import reactivemongo.api.commands.WriteResult
 import reactivemongo.api.indexes.{Index, IndexType}
-import reactivemongo.bson.{BSONDocument, BSONObjectID}
+import reactivemongo.bson.BSONObjectID
 import uk.gov.hmrc.mongo.ReactiveRepository
-import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
 import uk.gov.hmrc.teamsandrepositories.FutureHelpers.withTimerAndCounter
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -43,21 +40,14 @@ object PersistedTeamAndRepositories {
     def writes(dateTime: LocalDateTime): JsValue = JsNumber(value = dateTime.atOffset(ZoneOffset.UTC).toEpochSecond)
   }
 
-  //  implicit val bsonIdFormat = ReactiveMongoFormats.objectIdFormats
-  //  val gitRepositoryFormat = Json.format[Seq[GitRepository]]
   implicit val formats = Json.format[PersistedTeamAndRepositories]
 
 }
 
-//!@ test this
 class TeamsAndReposPersister @Inject()(mongoTeamsAndReposPersister: MongoTeamsAndReposPersister, mongoUpdateTimePersister: MongoUpdateTimePersister) {
 
   val teamsAndRepositoriesTimestampKeyName = "teamsAndRepositories.updated"
 
-  //!@ might need to bring this back once for testing purposes
-//  def add(teamsAndRepositories: PersistedTeamAndRepositories): Future[Boolean] = {
-//    mongoTeamsAndReposPersister.add(teamsAndRepositories)
-//  }
 
   def update(teamsAndRepositories: PersistedTeamAndRepositories): Future[PersistedTeamAndRepositories] = {
     mongoTeamsAndReposPersister.update(teamsAndRepositories)
@@ -65,14 +55,10 @@ class TeamsAndReposPersister @Inject()(mongoTeamsAndReposPersister: MongoTeamsAn
 
   def getAllTeamAndRepos: Future[(Seq[PersistedTeamAndRepositories], Option[LocalDateTime])] = {
     for {
-      teamsAndRepos <- mongoTeamsAndReposPersister.getAllTeamAndRepos0 //!@ Rename this sucker...
+      teamsAndRepos <- mongoTeamsAndReposPersister.getAllTeamAndRepos
       timestamp <- mongoUpdateTimePersister.get(teamsAndRepositoriesTimestampKeyName)
     } yield (teamsAndRepos, timestamp.map(_.timestamp))
   }
-
-//  def getAllTeamAndRepos: Future[Seq[PersistedTeamAndRepositories]] = {
-//    mongoTeamsAndReposPersister.getAllTeamAndRepos
-//  }
 
   def clearAllData: Future[Boolean] = {
     mongoTeamsAndReposPersister.clearAllData
@@ -124,16 +110,9 @@ case class MongoTeamsAndReposPersister @Inject()(mongoConnector: MongoConnector)
   }
 
 
-  //!@Q
-  def getAllTeamAndRepos0: Future[Seq[PersistedTeamAndRepositories]] = findAll()
+  def getAllTeamAndRepos: Future[List[PersistedTeamAndRepositories]] = findAll()
 
-  def clearAllData = super.removeAll().map(!_.hasErrors)
-
-  //!@
-//  def getAllTeamAndRepos: Future[Seq[PersistedTeamAndRepositories]] = collection
-//    .find(BSONDocument.empty)
-//    .cursor[PersistedTeamAndRepositories]()
-//    .collect[List]()
+  def clearAllData: Future[Boolean] = super.removeAll().map(!_.hasErrors)
 
 }
 

@@ -16,7 +16,9 @@ class DataReloadScheduler @Inject()(actorSystem: ActorSystem,
                                     mongoLock: MongoLock
                                    )(implicit ec: ExecutionContext) {
 
+  println("-" * 100)
   private val cacheDuration = cacheConfig.teamsCacheDuration
+  println(cacheDuration)
 
   private val scheduledReload = actorSystem.scheduler.schedule(cacheDuration, cacheDuration) {
     Logger.info("Scheduled teams repository cache reload triggered")

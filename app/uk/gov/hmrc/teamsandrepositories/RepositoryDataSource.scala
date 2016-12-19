@@ -20,6 +20,7 @@ import java.time.LocalDateTime
 
 import com.google.inject.{Inject, Singleton}
 import org.joda.time.Duration
+import play.api.Logger
 import play.api.libs.json._
 import uk.gov.hmrc.githubclient.{GhOrganisation, GhRepository, GhTeam, GithubApiClient}
 import uk.gov.hmrc.lock.{LockKeeper, LockMongoRepository, LockRepository}
@@ -71,7 +72,6 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
   val retries: Int = 5
   val initialDuration: Double = 50
 
-  //!@ test this + log ops
   override def persistTeamsAndReposMapping(): Future[Seq[PersistedTeamAndRepositories]] = {
     exponentialRetry(retries, initialDuration) {
       gh.getOrganisations.flatMap { (orgs: Seq[GhOrganisation]) =>
@@ -183,11 +183,11 @@ class CompositeRepositoryDataSource @Inject()(val dataSources: List[RepositoryDa
 
   override def persistTeamsAndReposMapping(): Future[Seq[PersistedTeamAndRepositories]] =
     Future.sequence(dataSources.map(_.persistTeamsAndReposMapping())).map { results =>
-      //!@
-      //      Logger.info(s"Combining ${flattened.length} results from ${dataSources.length} sources")
-      //      flattened.groupBy(_.teamName).map { case (name, teams) =>
-      //        TeamRepositories(name, teams.flatMap(t => t.repositories).sortBy(_.name))
-      //      }.toList
-      results.flatten
+      val flattened = results.flatten
+      Logger.info(s"Combining ${flattened.length} results from ${dataSources.length} sources")
+      flattened.groupBy(_.teamName).map { case (name, teams) =>
+        PersistedTeamAndRepositories(name, teams.flatMap(t => t.repositories).sortBy(_.name))
+      }.toList
+
     }
 }

@@ -140,7 +140,7 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
 
   "Retrieving a list of teams" should {
 
-    "!@ Fix later !@ return the cache timestamp" in {
+    "return the cache timestamp" in {
       val controller = controllerWithData(defaultData, updateTimestamp = updateTimestamp)
       val result = controller.teams().apply(FakeRequest())
 

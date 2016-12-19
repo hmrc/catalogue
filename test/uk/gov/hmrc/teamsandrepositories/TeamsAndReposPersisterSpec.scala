@@ -3,20 +3,14 @@ package uk.gov.hmrc.teamsandrepositories
 import java.time.LocalDateTime
 
 import org.mockito.Mockito._
+import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
-import org.scalatest._
 import org.scalatestplus.play.OneAppPerSuite
-import play.api.Application
-import play.api.inject.guice.GuiceApplicationBuilder
 import uk.gov.hmrc.mongo.MongoSpecSupport
-import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future
 
-/**
-  * Created by armin.
-  */
 class TeamsAndReposPersisterSpec extends WordSpec with Matchers with OptionValues with MockitoSugar with LoneElement with MongoSpecSupport with ScalaFutures with BeforeAndAfterEach with OneAppPerSuite {
 
   private val teamsAndReposPersister = mock[MongoTeamsAndReposPersister]
@@ -37,8 +31,8 @@ class TeamsAndReposPersisterSpec extends WordSpec with Matchers with OptionValue
     "get the teamRepos and update time together" in {
       val now = LocalDateTime.now
 
-      when(teamsAndReposPersister.getAllTeamAndRepos0)
-        .thenReturn(Future.successful(Seq(teamAndRepositories)))
+      when(teamsAndReposPersister.getAllTeamAndRepos)
+        .thenReturn(Future.successful(List(teamAndRepositories)))
 
       when(updateTimePersister.get(sut.teamsAndRepositoriesTimestampKeyName))
         .thenReturn(Future.successful(Some(KeyAndTimestamp(sut.teamsAndRepositoriesTimestampKeyName, now))))
@@ -47,6 +41,24 @@ class TeamsAndReposPersisterSpec extends WordSpec with Matchers with OptionValue
 
       retVal.futureValue._1 shouldBe Seq(teamAndRepositories)
       retVal.futureValue._2.value shouldBe now
+    }
+
+    "delegate to teamsAndReposPersister and updateTimePersister for clearAll" in {
+
+      sut.clearAllData
+
+      verify(teamsAndReposPersister, times(1)).clearAllData
+      verify(updateTimePersister, times(1)).remove(sut.teamsAndRepositoriesTimestampKeyName)
+    }
+
+    "delegate to updateTimePersister for updating timestamp" in {
+      val now = LocalDateTime.now
+
+      sut.updateTimestamp(now)
+
+      verify(updateTimePersister, times(1)).update(KeyAndTimestamp(sut.teamsAndRepositoriesTimestampKeyName, now))
+
+
     }
   }
 
