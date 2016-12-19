@@ -11,12 +11,14 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class ReloadScheduler @Inject()(val actorSystem: ActorSystem,
                                 applicationLifecycle: ApplicationLifecycle,
-                                dataLoader: MemoryCachedRepositoryDataSource[PersistedTeamAndRepositories],
+                                dataSynchroniser: DataSynchroniser,
+                                teamsAndReposPersister: TeamsAndReposPersister,
                                 cacheConfig: CacheConfig)(implicit ec: ExecutionContext) {
 
   private val scheduledReload = actorSystem.scheduler.schedule(cacheConfig.teamsCacheDuration, cacheConfig.teamsCacheDuration) {
     Logger.info("Scheduled teams repository cache reload triggered")
-    dataLoader.reload()
+    //!@ put the teamsAndReposPersister in syncher
+    dataSynchroniser.run(teamsAndReposPersister)
   }
 
   applicationLifecycle.addStopHook(() => Future(scheduledReload.cancel()))

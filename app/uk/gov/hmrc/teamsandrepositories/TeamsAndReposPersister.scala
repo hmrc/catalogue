@@ -129,10 +129,12 @@ case class MongoTeamsAndReposPersister @Inject()(mongoConnector: MongoConnector)
   }
 
 
+  //!@Q
   def getAllTeamAndRepos0: Future[Seq[PersistedTeamAndRepositories]] = findAll()
 
   def clearAllData = super.removeAll().map(!_.hasErrors)
 
+  //!@
 //  def getAllTeamAndRepos: Future[Seq[PersistedTeamAndRepositories]] = collection
 //    .find(BSONDocument.empty)
 //    .cursor[PersistedTeamAndRepositories]()
@@ -156,10 +158,10 @@ object KeyAndTimestamp {
 
 @Singleton
 case class MongoUpdateTimePersister @Inject()(mongoConnector: MongoConnector)
-  extends ReactiveRepository[PersistedTeamAndRepositories, BSONObjectID](
+  extends ReactiveRepository[KeyAndTimestamp, BSONObjectID](
     collectionName = "updateTime",
     mongo = mongoConnector.db,
-    domainFormat = PersistedTeamAndRepositories.formats) {
+    domainFormat = KeyAndTimestamp.formats) {
 
   private val keyFieldName = "keyName"
 

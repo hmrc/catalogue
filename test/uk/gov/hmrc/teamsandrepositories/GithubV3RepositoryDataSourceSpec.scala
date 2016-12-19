@@ -137,228 +137,216 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
     }
 
 
-        "Filter out teams according to the hidden config" in {
+    "Filter out teams according to the hidden config" in {
 
-          when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
-          when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
+      when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
+      when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
 
-         when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC",1),githubclient.GhOrganisation("DDCN",2))))
-          when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("hidden_team1", 1))))
-          when(githubClient.getTeamsForOrganisation("DDCN")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("hidden_team2", 3), githubclient.GhTeam("D", 4))))
-          when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("A_r",   "some description", 1, "url_A", false, now, now))))
-          when(githubClient.getReposForTeam(3)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("C_r",   "some description", 3, "url_C", false, now, now))))
-          when(githubClient.getReposForTeam(4)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("D_r",   "some description", 4, "url_D", false, now, now))))
-          when(githubClient.repoContainsContent(anyString(),anyString(),anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
+      when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC", 1), githubclient.GhOrganisation("DDCN", 2))))
+      when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("hidden_team1", 1))))
+      when(githubClient.getTeamsForOrganisation("DDCN")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("hidden_team2", 3), githubclient.GhTeam("D", 4))))
+      when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("A_r", "some description", 1, "url_A", false, now, now))))
+      when(githubClient.getReposForTeam(3)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("C_r", "some description", 3, "url_C", false, now, now))))
+      when(githubClient.getReposForTeam(4)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("D_r", "some description", 4, "url_D", false, now, now))))
+      when(githubClient.repoContainsContent(anyString(), anyString(), anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
 
-          val persister = new StubTeamsAndReposPersister
+      val persister = new StubTeamsAndReposPersister
 
-          dataSource.persistTeamsAndReposMapping(persister).futureValue shouldBe List(
-            PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now))))
-        }
+      dataSource.persistTeamsAndReposMapping(persister).futureValue shouldBe List(
+        PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now))))
+    }
 
-        "Set repoType Service if the repository contains an app/application.conf folder" in {
+    "Set repoType Service if the repository contains an app/application.conf folder" in {
 
-          when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
-          when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
-          when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC",1),githubclient.GhOrganisation("DDCN",2))))
-          when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("A", 1))))
-          when(githubClient.getTeamsForOrganisation("DDCN")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("D", 4))))
-          when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("A_r",   "some description", 1, "url_A", false, now, now))))
-          when(githubClient.getReposForTeam(4)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("D_r",   "some description", 4, "url_D", false, now, now))))
-          when(githubClient.repoContainsContent(anyString(),anyString(),anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
+      when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
+      when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
+      when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC", 1), githubclient.GhOrganisation("DDCN", 2))))
+      when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("A", 1))))
+      when(githubClient.getTeamsForOrganisation("DDCN")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("D", 4))))
+      when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("A_r", "some description", 1, "url_A", false, now, now))))
+      when(githubClient.getReposForTeam(4)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("D_r", "some description", 4, "url_D", false, now, now))))
+      when(githubClient.repoContainsContent(anyString(), anyString(), anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
 
-          when(githubClient.repoContainsContent("conf/application.conf","A_r","HMRC")(ec)).thenReturn(Future.successful(true))
-          when(githubClient.repoContainsContent("conf/application.conf","D_r","DDCN")(ec)).thenReturn(Future.successful(false))
+      when(githubClient.repoContainsContent("conf/application.conf", "A_r", "HMRC")(ec)).thenReturn(Future.successful(true))
+      when(githubClient.repoContainsContent("conf/application.conf", "D_r", "DDCN")(ec)).thenReturn(Future.successful(false))
 
-          val persister = new StubTeamsAndReposPersister
+      val persister = new StubTeamsAndReposPersister
 
-          dataSource.persistTeamsAndReposMapping(persister).futureValue shouldBe List(
-            PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A",now, now, repoType = RepoType.Deployable))),
-            PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D",now, now))))
-        }
+      dataSource.persistTeamsAndReposMapping(persister).futureValue shouldBe List(
+        PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Deployable))),
+        PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now))))
+    }
 
-        "Set repoType Service if the repository contains a Procfile" in {
-          when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
-          when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
-          when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC",1),githubclient.GhOrganisation("DDCN",2))))
-          when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("A", 1))))
-          when(githubClient.getTeamsForOrganisation("DDCN")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("D", 4))))
-          when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("A_r",   "some description", 1, "url_A", false, now, now))))
-          when(githubClient.getReposForTeam(4)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("D_r",   "some description", 4, "url_D", false, now, now))))
-          when(githubClient.repoContainsContent(anyString(),anyString(),anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
+    "Set repoType Service if the repository contains a Procfile" in {
+      when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
+      when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
+      when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC", 1), githubclient.GhOrganisation("DDCN", 2))))
+      when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("A", 1))))
+      when(githubClient.getTeamsForOrganisation("DDCN")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("D", 4))))
+      when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("A_r", "some description", 1, "url_A", false, now, now))))
+      when(githubClient.getReposForTeam(4)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("D_r", "some description", 4, "url_D", false, now, now))))
+      when(githubClient.repoContainsContent(anyString(), anyString(), anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
 
-          when(githubClient.repoContainsContent("Procfile","A_r","HMRC")(ec)).thenReturn(Future.successful(true))
-          when(githubClient.repoContainsContent("Procfile","B_r","HMRC")(ec)).thenReturn(Future.successful(false))
+      when(githubClient.repoContainsContent("Procfile", "A_r", "HMRC")(ec)).thenReturn(Future.successful(true))
+      when(githubClient.repoContainsContent("Procfile", "B_r", "HMRC")(ec)).thenReturn(Future.successful(false))
 
-          val persister = new StubTeamsAndReposPersister
+      val persister = new StubTeamsAndReposPersister
 
-          dataSource.persistTeamsAndReposMapping(persister).futureValue shouldBe List(
-            PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Deployable))),
-            PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Other))))
-        }
-
-
-        "Set type Service if the repository contains a deploy.properties" in {
-          when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
-          when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
-          when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC",1),githubclient.GhOrganisation("DDCN",2))))
-          when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("A", 1))))
-          when(githubClient.getTeamsForOrganisation("DDCN")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("D", 4))))
-          when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("A_r",   "some description", 1, "url_A", false, now, now))))
-          when(githubClient.getReposForTeam(4)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("D_r",   "some description", 4, "url_D", false, now, now))))
-
-          when(githubClient.repoContainsContent(anyString(),anyString(),anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
-
-          when(githubClient.repoContainsContent(same("Procfile"),same("A_r"),same("HMRC"))(same(ec))).thenReturn(Future.successful(false))
-
-          when(githubClient.repoContainsContent(same("deploy.properties"),same("D_r"),same("DDCN"))(same(ec))).thenReturn(Future.successful(true))
-
-          val persister = new StubTeamsAndReposPersister
-
-          dataSource.persistTeamsAndReposMapping(persister).futureValue should contain(PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now,  repoType = RepoType.Deployable))))
-        }
-
-        "Set type Library if not Service and has src/main/scala and has tags" in {
-          when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
-          when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
-          when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC",1),githubclient.GhOrganisation("DDCN",2))))
-          when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("A", 1))))
-          when(githubClient.getTeamsForOrganisation("DDCN")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("D", 4))))
-          when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("A_r",   "some description", 1, "url_A", false, now, now))))
-          when(githubClient.getReposForTeam(4)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("D_r",   "some description", 4, "url_D", false, now, now))))
-          when(githubClient.getTags("HMRC", "A_r")(ec)).thenReturn(Future.successful(List.empty))
-          when(githubClient.getTags("DDCN", "D_r")(ec)).thenReturn(Future.successful(List("D_r_tag")))
-
-          when(githubClient.repoContainsContent(anyString(),anyString(),anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
-
-          when(githubClient.repoContainsContent(same("Procfile"),same("A_r"),same("HMRC"))(same(ec))).thenReturn(Future.successful(false))
-
-          when(githubClient.repoContainsContent(same("deploy.properties"),same("D_r"),same("DDCN"))(same(ec))).thenReturn(Future.successful(false))
-
-          when(githubClient.repoContainsContent(same("src/main/scala"),same("D_r"),same("DDCN"))(same(ec))).thenReturn(Future.successful(true))
-
-          val persister = new StubTeamsAndReposPersister
-
-          val repositories: Seq[PersistedTeamAndRepositories] = dataSource.persistTeamsAndReposMapping(persister).futureValue
-
-          repositories should contain(PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Library))))
-
-          repositories should contain(PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Other))))
-        }
+      dataSource.persistTeamsAndReposMapping(persister).futureValue shouldBe List(
+        PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Deployable))),
+        PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Other))))
+    }
 
 
-        "Set type Library if not Service and has src/main/java and has tags" in {
-          when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
-          when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
-          when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC",1),githubclient.GhOrganisation("DDCN",2))))
-          when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("A", 1))))
-          when(githubClient.getTeamsForOrganisation("DDCN")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("D", 4))))
-          when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("A_r",   "some description", 1, "url_A", false, now, now))))
-          when(githubClient.getReposForTeam(4)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("D_r",   "some description", 4, "url_D", false, now, now))))
-          when(githubClient.getTags("HMRC", "A_r")(ec)).thenReturn(Future.successful(List.empty))
-          when(githubClient.getTags("DDCN", "D_r")(ec)).thenReturn(Future.successful(List("D_r_tag")))
+    "Set type Service if the repository contains a deploy.properties" in {
+      when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
+      when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
+      when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC", 1), githubclient.GhOrganisation("DDCN", 2))))
+      when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("A", 1))))
+      when(githubClient.getTeamsForOrganisation("DDCN")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("D", 4))))
+      when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("A_r", "some description", 1, "url_A", false, now, now))))
+      when(githubClient.getReposForTeam(4)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("D_r", "some description", 4, "url_D", false, now, now))))
 
-          when(githubClient.repoContainsContent(anyString(),anyString(),anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
+      when(githubClient.repoContainsContent(anyString(), anyString(), anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
 
-          when(githubClient.repoContainsContent(same("Procfile"),same("A_r"),same("HMRC"))(same(ec))).thenReturn(Future.successful(false))
+      when(githubClient.repoContainsContent(same("Procfile"), same("A_r"), same("HMRC"))(same(ec))).thenReturn(Future.successful(false))
 
-          when(githubClient.repoContainsContent(same("deploy.properties"),same("D_r"),same("DDCN"))(same(ec))).thenReturn(Future.successful(false))
+      when(githubClient.repoContainsContent(same("deploy.properties"), same("D_r"), same("DDCN"))(same(ec))).thenReturn(Future.successful(true))
 
-          when(githubClient.repoContainsContent(same("src/main/java"),same("D_r"),same("DDCN"))(same(ec))).thenReturn(Future.successful(true))
+      val persister = new StubTeamsAndReposPersister
 
-          val persister = new StubTeamsAndReposPersister
+      dataSource.persistTeamsAndReposMapping(persister).futureValue should contain(PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Deployable))))
+    }
 
-          val repositories: Seq[PersistedTeamAndRepositories] = dataSource.persistTeamsAndReposMapping(persister).futureValue
+    "Set type Library if not Service and has src/main/scala and has tags" in {
+      when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
+      when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
+      when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC", 1), githubclient.GhOrganisation("DDCN", 2))))
+      when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("A", 1))))
+      when(githubClient.getTeamsForOrganisation("DDCN")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("D", 4))))
+      when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("A_r", "some description", 1, "url_A", false, now, now))))
+      when(githubClient.getReposForTeam(4)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("D_r", "some description", 4, "url_D", false, now, now))))
+      when(githubClient.getTags("HMRC", "A_r")(ec)).thenReturn(Future.successful(List.empty))
+      when(githubClient.getTags("DDCN", "D_r")(ec)).thenReturn(Future.successful(List("D_r_tag")))
 
-          repositories should contain(PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Library))))
+      when(githubClient.repoContainsContent(anyString(), anyString(), anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
 
-          repositories should contain(PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Other))))
-        }
+      when(githubClient.repoContainsContent(same("Procfile"), same("A_r"), same("HMRC"))(same(ec))).thenReturn(Future.successful(false))
 
+      when(githubClient.repoContainsContent(same("deploy.properties"), same("D_r"), same("DDCN"))(same(ec))).thenReturn(Future.successful(false))
 
-        "Set type Other if not Service and Library" in {
-          when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
-          when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
-          when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC",1),githubclient.GhOrganisation("DDCN",2))))
-          when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("A", 1))))
-          when(githubClient.getTeamsForOrganisation("DDCN")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("D", 4))))
-          when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("A_r",   "some description", 1, "url_A", false, now, now))))
-          when(githubClient.getReposForTeam(4)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("D_r",   "some description", 4, "url_D", false, now, now))))
-          when(githubClient.getTags("HMRC", "A_r")(ec)).thenReturn(Future.successful(List.empty))
-          when(githubClient.getTags("DDCN", "D_r")(ec)).thenReturn(Future.successful(List.empty))
+      when(githubClient.repoContainsContent(same("src/main/scala"), same("D_r"), same("DDCN"))(same(ec))).thenReturn(Future.successful(true))
 
-          when(githubClient.repoContainsContent(anyString(),anyString(),anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
+      val persister = new StubTeamsAndReposPersister
 
-          when(githubClient.repoContainsContent(same("Procfile"),same("A_r"),same("HMRC"))(same(ec))).thenReturn(Future.successful(false))
+      val repositories: Seq[PersistedTeamAndRepositories] = dataSource.persistTeamsAndReposMapping(persister).futureValue
 
-          when(githubClient.repoContainsContent(same("deploy.properties"),same("D_r"),same("DDCN"))(same(ec))).thenReturn(Future.successful(false))
+      repositories should contain(PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Library))))
 
-          val persister = new StubTeamsAndReposPersister
-
-          val repositories: Seq[PersistedTeamAndRepositories] = dataSource.persistTeamsAndReposMapping(persister).futureValue
-
-          repositories should contain(PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Other))))
-
-          repositories should contain(PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Other))))
-        }
+      repositories should contain(PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Other))))
+    }
 
 
+    "Set type Library if not Service and has src/main/java and has tags" in {
+      when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
+      when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
+      when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC", 1), githubclient.GhOrganisation("DDCN", 2))))
+      when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("A", 1))))
+      when(githubClient.getTeamsForOrganisation("DDCN")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("D", 4))))
+      when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("A_r", "some description", 1, "url_A", false, now, now))))
+      when(githubClient.getReposForTeam(4)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("D_r", "some description", 4, "url_D", false, now, now))))
+      when(githubClient.getTags("HMRC", "A_r")(ec)).thenReturn(Future.successful(List.empty))
+      when(githubClient.getTags("DDCN", "D_r")(ec)).thenReturn(Future.successful(List("D_r_tag")))
 
-        "Retry up to 5 times in the event of a failed api call" in {
-          when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
-          when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
-          when(githubClient.getOrganisations(ec))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC",1))))
+      when(githubClient.repoContainsContent(anyString(), anyString(), anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
 
-          when(githubClient.getTeamsForOrganisation("HMRC")(ec))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.successful(List(githubclient.GhTeam("A", 1))))
+      when(githubClient.repoContainsContent(same("Procfile"), same("A_r"), same("HMRC"))(same(ec))).thenReturn(Future.successful(false))
 
-          when(githubClient.getReposForTeam(1)(ec))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.successful(List(githubclient.GhRepository("A_r",   "some description", 1, "url_A", false, now, now ))))
+      when(githubClient.repoContainsContent(same("deploy.properties"), same("D_r"), same("DDCN"))(same(ec))).thenReturn(Future.successful(false))
 
-          when(githubClient.repoContainsContent("app","A_r","HMRC")(ec))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.successful(false))
+      when(githubClient.repoContainsContent(same("src/main/java"), same("D_r"), same("DDCN"))(same(ec))).thenReturn(Future.successful(true))
 
-          when(githubClient.repoContainsContent("Procfile","A_r","HMRC")(ec))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.failed(new RuntimeException("something went wrong")))
-            .thenReturn(Future.successful(false))
+      val persister = new StubTeamsAndReposPersister
 
-          val persister = new StubTeamsAndReposPersister
+      val repositories: Seq[PersistedTeamAndRepositories] = dataSource.persistTeamsAndReposMapping(persister).futureValue
 
-          import org.scalatest.concurrent.Timeouts._
-          dataSource.persistTeamsAndReposMapping(persister).futureValue(Timeout(1 minute)) shouldBe List(
-            PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now))))
-        }
+      repositories should contain(PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Library))))
+
+      repositories should contain(PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Other))))
+    }
+
+
+    "Set type Other if not Service and Library" in {
+      when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
+      when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
+      when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC", 1), githubclient.GhOrganisation("DDCN", 2))))
+      when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("A", 1))))
+      when(githubClient.getTeamsForOrganisation("DDCN")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("D", 4))))
+      when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("A_r", "some description", 1, "url_A", false, now, now))))
+      when(githubClient.getReposForTeam(4)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("D_r", "some description", 4, "url_D", false, now, now))))
+      when(githubClient.getTags("HMRC", "A_r")(ec)).thenReturn(Future.successful(List.empty))
+      when(githubClient.getTags("DDCN", "D_r")(ec)).thenReturn(Future.successful(List.empty))
+
+      when(githubClient.repoContainsContent(anyString(), anyString(), anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
+
+      when(githubClient.repoContainsContent(same("Procfile"), same("A_r"), same("HMRC"))(same(ec))).thenReturn(Future.successful(false))
+
+      when(githubClient.repoContainsContent(same("deploy.properties"), same("D_r"), same("DDCN"))(same(ec))).thenReturn(Future.successful(false))
+
+      val persister = new StubTeamsAndReposPersister
+
+      val repositories: Seq[PersistedTeamAndRepositories] = dataSource.persistTeamsAndReposMapping(persister).futureValue
+
+      repositories should contain(PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Other))))
+
+      repositories should contain(PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Other))))
+    }
+
+
+    "Retry up to 5 times in the event of a failed api call" in {
+      when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
+      when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
+      when(githubClient.getOrganisations(ec))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC", 1))))
+
+      when(githubClient.getTeamsForOrganisation("HMRC")(ec))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.successful(List(githubclient.GhTeam("A", 1))))
+
+      when(githubClient.getReposForTeam(1)(ec))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.successful(List(githubclient.GhRepository("A_r", "some description", 1, "url_A", false, now, now))))
+
+      when(githubClient.repoContainsContent("app", "A_r", "HMRC")(ec))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.successful(false))
+
+      when(githubClient.repoContainsContent("Procfile", "A_r", "HMRC")(ec))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.failed(new RuntimeException("something went wrong")))
+        .thenReturn(Future.successful(false))
+
+      val persister = new StubTeamsAndReposPersister
+
+      dataSource.persistTeamsAndReposMapping(persister).futureValue(Timeout(1 minute)) shouldBe List(
+        PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now))))
+    }
 
 
   }
-
-  //  private def createDataSource(githubClient: GithubApiClient): GithubV3RepositoryDataSource = {
-  //    new GithubV3RepositoryDataSource(githubClient, isInternal = false) with GithubConfigProvider {
-  //      override def githubConfig: GithubConfig = new GithubConfig {
-  //        override def hiddenRepositories: List[String] = testHiddenRepositories
-  //
-  //        override def hiddenTeams: List[String] = testHiddenTeams
-  //      }
-  //    }
-  //  }
 }

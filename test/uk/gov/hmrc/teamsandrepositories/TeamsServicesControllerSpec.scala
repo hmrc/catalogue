@@ -19,9 +19,7 @@ package uk.gov.hmrc.teamsandrepositories
 import java.time.LocalDateTime
 import java.util.Date
 
-import akka.actor.{ActorSystem, Cancellable, Scheduler}
-import org.mockito.Mockito
-import org.mockito.Mockito._
+import akka.actor.ActorSystem
 import org.scalatest.OptionValues
 import org.scalatest.concurrent.Eventually
 import org.scalatest.mock.MockitoSugar
@@ -31,10 +29,9 @@ import play.api.mvc.{AnyContentAsEmpty, Results}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import play.api.{Application, Configuration}
-import uk.gov.hmrc.teamsandrepositories.config.{CacheConfig, UrlTemplate, UrlTemplates, UrlTemplatesProvider}
+import uk.gov.hmrc.teamsandrepositories.config.{UrlTemplate, UrlTemplates, UrlTemplatesProvider}
 
-import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Results with OptionValues with OneServerPerSuite with Eventually {
 
@@ -56,7 +53,8 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
 
   import play.api.inject.guice.GuiceApplicationBuilder
 
-  val mockDataLoader = mock[MemoryCachedRepositoryDataSource[PersistedTeamAndRepositories]]
+  val mockDataSynchroniser = mock[DataSynchroniser]
+  val mockTeamsAndReposPersister = mock[TeamsAndReposPersister]
   val mockUrlTemplateProvider = mock[UrlTemplatesProvider]
   val mockConfiguration = mock[Configuration]
   //!@
@@ -110,7 +108,7 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
           new UrlTemplate("log1", "log 1", "$name"))
       )))
 
-    new TeamsRepositoriesController(mockDataLoader, mockUrlTemplateProvider, mockConfiguration, mockTeamsAndRepositories) {
+    new TeamsRepositoriesController(mockDataSynchroniser, mockTeamsAndReposPersister, mockUrlTemplateProvider, mockConfiguration, mockTeamsAndRepositories) {
 
       override val repositoriesToIgnore = listOfReposToIgnore
     }

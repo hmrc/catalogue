@@ -20,38 +20,39 @@ class ModuleSpec
   private val mockConfiguration = mock[Configuration]
   private val mockEnv = mock[play.api.Environment]
 
-  "Play module loading from file" should {
-    "give File when conf is on" ignore {
-
-      val tempFile = File.createTempFile("test", "file")
-
-      when(mockConfiguration.getBoolean("github.offline.mode")).thenReturn(Some(true))
-      when(mockConfiguration.getString("cacheFilename")).thenReturn(Some("/some/tmp/file"))
-
-      val application = new GuiceApplicationBuilder()
-        .overrides(new Module(mockEnv, mockConfiguration))
-        .disable(classOf[com.kenshoo.play.metrics.PlayModule])
-        .configure(
-          Map(
-            "github.open.api.host" ->           "http://bla.bla",
-            "github.open.api.user" ->           "",
-            "github.open.api.key" ->            "",
-            "github.enterprise.api.host" ->     "http://bla.bla",
-            "github.enterprise.api.user" ->     "",
-            "github.enterprise.api.key" ->      ""
-          )
-        )
-        .build()
-
-      val guiceInjector = application.injector.instanceOf(classOf[Injector])
-
-      val key = Key.get(new TypeLiteral[DataGetterPersister[TeamRepositories]]() {})
-
-      guiceInjector.getInstance(key).isInstanceOf[FileDataGetterPersister] shouldBe(true)
-
-    }
-
-  }
+//!@
+//  "Play module loading from file" should {
+//    "give File when conf is on" ignore {
+//
+//      val tempFile = File.createTempFile("test", "file")
+//
+//      when(mockConfiguration.getBoolean("github.offline.mode")).thenReturn(Some(true))
+//      when(mockConfiguration.getString("cacheFilename")).thenReturn(Some("/some/tmp/file"))
+//
+//      val application = new GuiceApplicationBuilder()
+//        .overrides(new Module(mockEnv, mockConfiguration))
+//        .disable(classOf[com.kenshoo.play.metrics.PlayModule])
+//        .configure(
+//          Map(
+//            "github.open.api.host" ->           "http://bla.bla",
+//            "github.open.api.user" ->           "",
+//            "github.open.api.key" ->            "",
+//            "github.enterprise.api.host" ->     "http://bla.bla",
+//            "github.enterprise.api.user" ->     "",
+//            "github.enterprise.api.key" ->      ""
+//          )
+//        )
+//        .build()
+//
+//      val guiceInjector = application.injector.instanceOf(classOf[Injector])
+//
+//      val key = Key.get(new TypeLiteral[DataGetterPersister[TeamRepositories]]() {})
+//
+//      guiceInjector.getInstance(key).isInstanceOf[FileDataGetterPersister] shouldBe(true)
+//
+//    }
+//
+//  }
 
 
   "Play module loading from github" should {
@@ -91,9 +92,9 @@ class ModuleSpec
 
     val guiceInjector = application.injector.instanceOf(classOf[Injector])
 
-    val key = Key.get(new TypeLiteral[DataGetterPersister[PersistedTeamAndRepositories]]() {})
+    val key = Key.get(new TypeLiteral[DataSynchroniser]() {})
 
-    guiceInjector.getInstance(key).isInstanceOf[GithubDataGetterPersister] shouldBe (true)
+    guiceInjector.getInstance(key).isInstanceOf[GithubDataSynchroniser] shouldBe (true)
   }
 
 

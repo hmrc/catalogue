@@ -17,9 +17,7 @@ class Module(environment: play.api.Environment, configuration: Configuration) ex
 
   override def configure(): Unit = {
 
-    val offlineMode = configuration.getBoolean("github.offline.mode").getOrElse(false)
-
-    bind(new TypeLiteral[DataGetterPersister[PersistedTeamAndRepositories]]() {}).toInstance(getDataLoader(offlineMode))
+    bind(new TypeLiteral[DataSynchroniser]() {}).toInstance(githubDataLoader)
 
     bind(new TypeLiteral[() => LocalDateTime]() {}).toInstance(LocalDateTime.now)
 
@@ -28,41 +26,43 @@ class Module(environment: play.api.Environment, configuration: Configuration) ex
 
   }
 
-  def getDataLoader(offlineMode: Boolean): DataGetterPersister[PersistedTeamAndRepositories] = {
-    val dataLoader: DataGetterPersister[PersistedTeamAndRepositories] = if (offlineMode) {
-      fileDataLoader
-    } else {
-      githubDataLoader
-    }
-    dataLoader
-  }
+  //!@
+//  def getDataLoader(offlineMode: Boolean): DataGetterPersister[PersistedTeamAndRepositories] = {
+//    val dataLoader: DataGetterPersister[PersistedTeamAndRepositories] = if (offlineMode) {
+//      fileDataLoader
+//    } else {
+//      githubDataLoader
+//    }
+//    dataLoader
+//  }
 
 
 
+  //!@
 
-  def fileDataLoader: FileDataGetterPersister = {
+  //  def fileDataLoader: FileDataGetterPersister = {
+//
+//    implicit val repositoryFormats = Json.format[GitRepository]
+//    implicit val teamRepositoryFormats = Json.format[TeamRepositories]
+//
+//    val cacheFilename = configuration.getString("cacheFilename").getOrElse(throw new RuntimeException("cacheFilename is not specified for off-line (dev) usage"))
+//
+//    lazy val loadCacheData: Seq[TeamRepositories] = {
+//      Try(Json.parse(Source.fromFile(cacheFilename).mkString)
+//        .as[Seq[TeamRepositories]]) match {
+//        case Success(repos) => repos
+//        case Failure(e) =>
+//          e.printStackTrace()
+//          throw e
+//      }
+//    }
+//
+//    //!@FileDataGetterPersister(() => Future.successful(loadCacheData))
+//    ???
+//  }
 
-    implicit val repositoryFormats = Json.format[GitRepository]
-    implicit val teamRepositoryFormats = Json.format[TeamRepositories]
 
-    val cacheFilename = configuration.getString("cacheFilename").getOrElse(throw new RuntimeException("cacheFilename is not specified for off-line (dev) usage"))
-
-    lazy val loadCacheData: Seq[TeamRepositories] = {
-      Try(Json.parse(Source.fromFile(cacheFilename).mkString)
-        .as[Seq[TeamRepositories]]) match {
-        case Success(repos) => repos
-        case Failure(e) =>
-          e.printStackTrace()
-          throw e
-      }
-    }
-
-    //!@FileDataGetterPersister(() => Future.successful(loadCacheData))
-    ???
-  }
-
-
-  def githubDataLoader: GithubDataGetterPersister = {
+  def githubDataLoader: GithubDataSynchroniser = {
     val githubConfig = new GithubConfig(configuration)
 
     val url = githubConfig.githubApiEnterpriseConfig.apiUrl
@@ -76,12 +76,17 @@ class Module(environment: play.api.Environment, configuration: Configuration) ex
     val openTeamsRepositoryDataSource: RepositoryDataSource =
       new GithubV3RepositoryDataSource(githubConfig, gitOpenClient, isInternal = false)
 
-//    val runner: (TeamsAndReposPersister) => Future[Seq[Boolean]] = new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)).persistTeamsAndReposMapping _
-    val runner: (TeamsAndReposPersister) => Future[Seq[PersistedTeamAndRepositories]] = new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource)).persistTeamsAndReposMapping _
-    GithubDataGetterPersister(runner)
+    //!@
+//    val runner:() => Future..
+    val runner: (TeamsAndReposPersister) => Future[Seq[PersistedTeamAndRepositories]]
+    = new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)).persistTeamsAndReposMapping _
+//    val runner: (TeamsAndReposPersister) => Future[Seq[PersistedTeamAndRepositories]] = new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource)).persistTeamsAndReposMapping _
+    GithubDataSynchroniser(runner)
   }
 
-//  def githubDataLoader: GithubDataGetter = {
+  //!@
+
+  //  def githubDataLoader: GithubDataGetter = {
 //    val githubConfig = new GithubConfig(configuration)
 //
 //    val url = githubConfig.githubApiEnterpriseConfig.apiUrl

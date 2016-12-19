@@ -89,7 +89,8 @@ object BlockingIOExecutionContext {
 
 
 @Singleton
-class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDataSource[PersistedTeamAndRepositories],
+class TeamsRepositoriesController @Inject()(dataSynchroniser: DataSynchroniser,
+                                            teamsAndReposPersister: TeamsAndReposPersister,
                                             urlTemplatesProvider: UrlTemplatesProvider,
                                             configuration: Configuration,
                                             mongoTeamsAndReposPersister: TeamsAndReposPersister) extends BaseController {
@@ -173,7 +174,7 @@ class TeamsRepositoriesController @Inject()(dataLoader: MemoryCachedRepositoryDa
   }
 
   def reloadCache() = Action {
-    dataLoader.reload()
+    dataSynchroniser.run(teamsAndReposPersister)
     Ok("Cache reload triggered successfully")
   }
 
