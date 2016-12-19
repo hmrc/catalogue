@@ -174,7 +174,7 @@ class TeamsRepositoriesController @Inject()(dataSynchroniser: DataSynchroniser,
   }
 
   def reloadCache() = Action {
-    dataSynchroniser.run(teamsAndReposPersister)
+    dataSynchroniser.run()
     Ok("Cache reload triggered successfully")
   }
 

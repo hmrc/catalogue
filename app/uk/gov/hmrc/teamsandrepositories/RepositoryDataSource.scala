@@ -52,11 +52,13 @@ object GitRepository {
 trait RepositoryDataSource {
   //  def getTeamRepoMapping: Future[Seq[TeamRepositories]]
 
-  def persistTeamsAndReposMapping(persister: TeamsAndReposPersister): Future[Seq[PersistedTeamAndRepositories]]
+  def persistTeamsAndReposMapping(): Future[Seq[PersistedTeamAndRepositories]]
 }
 
 @Singleton
-class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig, gh: GithubApiClient,
+class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
+                                             gh: GithubApiClient,
+                                             persister: TeamsAndReposPersister,
                                              val isInternal: Boolean) extends RepositoryDataSource {
 
   import BlockingIOExecutionContext._
@@ -69,7 +71,7 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig, gh: Git
   val initialDuration: Double = 50
 
   //!@ test this + log ops
-  override def persistTeamsAndReposMapping(persister: TeamsAndReposPersister): Future[Seq[PersistedTeamAndRepositories]] = {
+  override def persistTeamsAndReposMapping(): Future[Seq[PersistedTeamAndRepositories]] = {
 
     exponentialRetry(retries, initialDuration) {
       gh.getOrganisations.flatMap { (orgs: Seq[GhOrganisation]) =>
@@ -166,12 +168,13 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig, gh: Git
 }
 
 
-class CompositeRepositoryDataSource(val dataSources: List[RepositoryDataSource]) extends RepositoryDataSource {
+@Singleton
+class CompositeRepositoryDataSource @Inject()(val dataSources: List[RepositoryDataSource]) extends RepositoryDataSource {
 
   import BlockingIOExecutionContext._
 
-  override def persistTeamsAndReposMapping(persister: TeamsAndReposPersister): Future[Seq[PersistedTeamAndRepositories]] =
-    Future.sequence(dataSources.map(_.persistTeamsAndReposMapping(persister))).map { results =>
+  override def persistTeamsAndReposMapping(): Future[Seq[PersistedTeamAndRepositories]] =
+    Future.sequence(dataSources.map(_.persistTeamsAndReposMapping())).map { results =>
       //!@
       //      Logger.info(s"Combining ${flattened.length} results from ${dataSources.length} sources")
       //      flattened.groupBy(_.teamName).map { case (name, teams) =>

@@ -14,7 +14,7 @@ trait DataSynchroniser {
 }
 
 object DataSynchroniser {
-  type DataSynchroniserFunction = TeamsAndReposPersister => Future[Seq[PersistedTeamAndRepositories]]
+  type DataSynchroniserFunction = () => Future[Seq[PersistedTeamAndRepositories]]
 }
 
 @Singleton
