@@ -93,7 +93,7 @@ class ModuleSpec
 
     val guiceInjector = application.injector.instanceOf(classOf[Injector])
 
-    val key = Key.get(new TypeLiteral[DataSynchroniser]() {})
+    val key = Key.get(new TypeLiteral[GithubDataSynchroniser]() {})
 
     guiceInjector.getInstance(key).isInstanceOf[GithubDataSynchroniser] shouldBe (true)
   }

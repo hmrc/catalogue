@@ -9,9 +9,6 @@ import uk.gov.hmrc.teamsandrepositories.DataSynchroniser.DataSynchroniserFunctio
 
 import scala.concurrent.Future
 
-trait DataSynchroniser {
-  val run: DataSynchroniserFunction
-}
 
 object DataSynchroniser {
   type DataSynchroniserFunction = () => Future[Seq[PersistedTeamAndRepositories]]
@@ -22,6 +19,6 @@ class MongoConnector @Inject()(application: Application) {
   val db: () => DB = application.injector.instanceOf[ReactiveMongoComponent].mongoConnector.db
 }
 
-case class GithubDataSynchroniser(run: DataSynchroniserFunction) extends DataSynchroniser
+case class GithubDataSynchroniser(run: DataSynchroniserFunction)
 
 

@@ -54,9 +54,10 @@ class TeamsAndReposPersister @Inject()(mongoTeamsAndReposPersister: MongoTeamsAn
 
   val teamsAndRepositoriesTimestampKeyName = "teamsAndRepositories.updated"
 
-  def add(teamsAndRepositories: PersistedTeamAndRepositories): Future[Boolean] = {
-    mongoTeamsAndReposPersister.add(teamsAndRepositories)
-  }
+  //!@ might need to bring this back once for testing purposes
+//  def add(teamsAndRepositories: PersistedTeamAndRepositories): Future[Boolean] = {
+//    mongoTeamsAndReposPersister.add(teamsAndRepositories)
+//  }
 
   def update(teamsAndRepositories: PersistedTeamAndRepositories): Future[PersistedTeamAndRepositories] = {
     mongoTeamsAndReposPersister.update(teamsAndRepositories)

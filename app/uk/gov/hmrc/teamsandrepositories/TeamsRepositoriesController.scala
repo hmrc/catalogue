@@ -89,7 +89,7 @@ object BlockingIOExecutionContext {
 
 
 @Singleton
-class TeamsRepositoriesController @Inject()(dataSynchroniser: DataSynchroniser,
+class TeamsRepositoriesController @Inject()(dataSynchroniser: GithubDataSynchroniser,
                                             teamsAndReposPersister: TeamsAndReposPersister,
                                             urlTemplatesProvider: UrlTemplatesProvider,
                                             configuration: Configuration,

@@ -2,19 +2,16 @@ package uk.gov.hmrc.teamsandrepositories
 
 import com.google.inject.{Inject, Singleton}
 import uk.gov.hmrc.githubclient.GithubApiClient
-import uk.gov.hmrc.teamsandrepositories.DataSynchroniser.DataSynchroniserFunction
 import uk.gov.hmrc.teamsandrepositories.config.GithubConfig
 
-import scala.collection.immutable.Seq
-import scala.concurrent.Future
 
+//!@ test this
 @Singleton
 case class SynchroniserFactory @Inject()(githubConfig: GithubConfig, persister: TeamsAndReposPersister) {
   def getSynchroniser: GithubDataSynchroniser = {
     val url = githubConfig.githubApiEnterpriseConfig.apiUrl
 
     val gitApiEnterpriseClient = GithubApiClient(url, githubConfig.githubApiEnterpriseConfig.key)
-
     val enterpriseTeamsRepositoryDataSource: RepositoryDataSource =
       new GithubV3RepositoryDataSource(githubConfig, gitApiEnterpriseClient, persister, isInternal = true)
 
@@ -22,9 +19,9 @@ case class SynchroniserFactory @Inject()(githubConfig: GithubConfig, persister: 
     val openTeamsRepositoryDataSource: RepositoryDataSource =
       new GithubV3RepositoryDataSource(githubConfig, gitOpenClient, persister, isInternal = false)
 
-    val runner: DataSynchroniserFunction =
+    val dataSynchroniserFunc =
       new CompositeRepositoryDataSource(List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)).persistTeamsAndReposMapping _
 
-    GithubDataSynchroniser(runner)
+    GithubDataSynchroniser(dataSynchroniserFunc)
   }
 }
