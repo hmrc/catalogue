@@ -7,7 +7,7 @@ import uk.gov.hmrc.teamsandrepositories.config.GithubConfig
 
 //!@ test this
 @Singleton
-case class SynchroniserFactory @Inject()(githubConfig: GithubConfig, persister: TeamsAndReposPersister) {
+case class SynchroniserFactory @Inject()(githubConfig: GithubConfig, persister: TeamsAndReposPersister, mongoConnector: MongoConnector) {
   def getSynchroniser: GithubDataSynchroniser = {
     val url = githubConfig.githubApiEnterpriseConfig.apiUrl
 

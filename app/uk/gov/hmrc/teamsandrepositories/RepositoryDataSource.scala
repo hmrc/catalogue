@@ -19,16 +19,17 @@ package uk.gov.hmrc.teamsandrepositories
 import java.time.LocalDateTime
 
 import com.google.inject.{Inject, Singleton}
-import org.mockito.Mockito
+import org.joda.time.Duration
 import play.api.libs.json._
 import uk.gov.hmrc.githubclient.{GhOrganisation, GhRepository, GhTeam, GithubApiClient}
+import uk.gov.hmrc.lock.{LockKeeper, LockMongoRepository, LockRepository}
 import uk.gov.hmrc.teamsandrepositories.RepoType._
 import uk.gov.hmrc.teamsandrepositories.RetryStrategy._
 import uk.gov.hmrc.teamsandrepositories.config.GithubConfig
 
 import scala.collection.immutable.Seq
-import scala.concurrent.{Await, Future}
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 
 case class TeamRepositories(teamName: String, repositories: List[GitRepository]) {
@@ -72,7 +73,6 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
 
   //!@ test this + log ops
   override def persistTeamsAndReposMapping(): Future[Seq[PersistedTeamAndRepositories]] = {
-
     exponentialRetry(retries, initialDuration) {
       gh.getOrganisations.flatMap { (orgs: Seq[GhOrganisation]) =>
         Future.sequence(orgs.map(org => traverseOrganisation(org, persister))).map {
@@ -167,6 +167,14 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
 
 }
 
+@Singleton
+class MongoLock @Inject()(mongoConnector: MongoConnector) extends LockKeeper {
+  override def repo: LockRepository = LockMongoRepository(mongoConnector.db)
+
+  override def lockId: String = "teams-and-repositories-sync-job"
+
+  override val forceLockReleaseAfter: Duration = Duration.standardMinutes(20)
+}
 
 @Singleton
 class CompositeRepositoryDataSource @Inject()(val dataSources: List[RepositoryDataSource]) extends RepositoryDataSource {

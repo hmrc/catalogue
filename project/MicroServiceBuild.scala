@@ -39,7 +39,6 @@ private object AppDependencies {
     "uk.gov.hmrc" %% "play-config" % playConfigVersion,
     "uk.gov.hmrc" %% "logback-json-logger" % logbackJsonLoggerVersion,
     "uk.gov.hmrc" %% "domain" % domainVersion,
-    "org.mockito" % "mockito-core" % "2.2.6",
     "org.apache.httpcomponents" % "httpcore" % "4.3.2",
     "org.apache.httpcomponents" % "httpclient" % "4.3.5",
     "uk.gov.hmrc" %% "mongo-lock" % "4.0.0",

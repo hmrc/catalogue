@@ -63,18 +63,12 @@ class TeamsAndReposPersister @Inject()(mongoTeamsAndReposPersister: MongoTeamsAn
     mongoTeamsAndReposPersister.update(teamsAndRepositories)
   }
 
-  def getAllTeamAndReposOld: Future[Seq[PersistedTeamAndRepositories]] = {
-    mongoTeamsAndReposPersister.getAllTeamAndRepos0
-  }
-
   def getAllTeamAndRepos: Future[(Seq[PersistedTeamAndRepositories], Option[LocalDateTime])] = {
     for {
-      teamsAndRepos <- mongoTeamsAndReposPersister.getAllTeamAndRepos0
+      teamsAndRepos <- mongoTeamsAndReposPersister.getAllTeamAndRepos0 //!@ Rename this sucker...
       timestamp <- mongoUpdateTimePersister.get(teamsAndRepositoriesTimestampKeyName)
     } yield (teamsAndRepos, timestamp.map(_.timestamp))
-
   }
-
 
 //  def getAllTeamAndRepos: Future[Seq[PersistedTeamAndRepositories]] = {
 //    mongoTeamsAndReposPersister.getAllTeamAndRepos

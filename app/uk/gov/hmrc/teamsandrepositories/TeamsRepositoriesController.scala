@@ -89,7 +89,7 @@ object BlockingIOExecutionContext {
 
 
 @Singleton
-class TeamsRepositoriesController @Inject()(dataSynchroniser: GithubDataSynchroniser,
+class TeamsRepositoriesController @Inject()(dataReloadScheduler: DataReloadScheduler,
                                             teamsAndReposPersister: TeamsAndReposPersister,
                                             urlTemplatesProvider: UrlTemplatesProvider,
                                             configuration: Configuration,
@@ -174,7 +174,7 @@ class TeamsRepositoriesController @Inject()(dataSynchroniser: GithubDataSynchron
   }
 
   def reloadCache() = Action {
-    dataSynchroniser.run()
+    dataReloadScheduler.reload
     Ok("Cache reload triggered successfully")
   }
 

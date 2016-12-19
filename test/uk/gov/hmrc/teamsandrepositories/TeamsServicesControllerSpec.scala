@@ -53,26 +53,12 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
 
   import play.api.inject.guice.GuiceApplicationBuilder
 
-  val mockDataSynchroniser = mock[GithubDataSynchroniser]
+  val dataReloadScheduler = mock[DataReloadScheduler]
   val mockTeamsAndReposPersister = mock[TeamsAndReposPersister]
   val mockUrlTemplateProvider = mock[UrlTemplatesProvider]
   val mockConfiguration = mock[Configuration]
-  //!@
-  //  val mockCacheConfig = mock[CacheConfig]
-  //  val mockActorSystem = mock[ActorSystem]
+
   val mockTeamsAndRepositories = mock[TeamsAndReposPersister]
-
-  //!@
-  //  when(mockActorSystem.scheduler).thenReturn(new Scheduler {
-  //    override def schedule(initialDelay: FiniteDuration, interval: FiniteDuration, runnable: Runnable)(implicit executor: ExecutionContext): Cancellable = {
-  //      mock[Cancellable]
-  //    }
-  //
-  //    override def scheduleOnce(delay: FiniteDuration, runnable: Runnable)(implicit executor: ExecutionContext): Cancellable = ???
-  //
-  //    override def maxFrequency: Double = ???
-  //  })
-
 
   import org.mockito.Mockito._
 
@@ -108,7 +94,7 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
           new UrlTemplate("log1", "log 1", "$name"))
       )))
 
-    new TeamsRepositoriesController(mockDataSynchroniser, mockTeamsAndReposPersister, mockUrlTemplateProvider, mockConfiguration, mockTeamsAndRepositories) {
+    new TeamsRepositoriesController(dataReloadScheduler, mockTeamsAndReposPersister, mockUrlTemplateProvider, mockConfiguration, mockTeamsAndRepositories) {
 
       override val repositoriesToIgnore = listOfReposToIgnore
     }
@@ -584,17 +570,7 @@ class TeamsServicesControllerSpec extends PlaySpec with MockitoSugar with Result
       status(result) mustBe 404
     }
 
-    //    "reload the cache at the configured intervals" in {
-    //      import scala.concurrent.duration._
-    //      when(mockCacheConfig.teamsCacheDuration).thenReturn(100 millisecond)
-    //
-    //      val controller = controllerWithData(singleRepoResult(repoName = "r1", repoUrl = "ru", isInternal = false), actorSystem = Some(app.actorSystem))
-    //
-    //
-    //      verify(mockDataLoader, Mockito.timeout(300).atLeast(2)).reload()
-    //
-    //
-    //    }
+
   }
 
   "Retrieving a list of all repositories" should {
