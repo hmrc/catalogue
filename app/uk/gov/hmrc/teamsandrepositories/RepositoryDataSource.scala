@@ -176,18 +176,18 @@ class MongoLock @Inject()(mongoConnector: MongoConnector) extends LockKeeper {
   override val forceLockReleaseAfter: Duration = Duration.standardMinutes(20)
 }
 
-@Singleton
-class CompositeRepositoryDataSource @Inject()(val dataSources: List[GithubV3RepositoryDataSource]) {
-
-  import BlockingIOExecutionContext._
-
-  def traverseDatasources: Future[Seq[PersistedTeamAndRepositories]] =
-    Future.sequence(dataSources.map(_.persistTeamsAndReposMapping())).map { results =>
-      val flattened = results.flatten
-      Logger.info(s"Combining ${flattened.length} results from ${dataSources.length} sources")
-      flattened.groupBy(_.teamName).map { case (name, teams) =>
-        PersistedTeamAndRepositories(name, teams.flatMap(t => t.repositories).sortBy(_.name))
-      }.toList
-
-    }
-}
+//trait CompositeRepositoryDataSource {
+//  val dataSources: List[GithubV3RepositoryDataSource]
+//
+//  import BlockingIOExecutionContext._
+//
+//  def traverseDataSources: Future[Seq[PersistedTeamAndRepositories]] =
+//    Future.sequence(dataSources.map(_.persistTeamsAndReposMapping())).map { results =>
+//      val flattened = results.flatten
+//      Logger.info(s"Combining ${flattened.length} results from ${dataSources.length} sources")
+//      flattened.groupBy(_.teamName).map { case (name, teams) =>
+//        PersistedTeamAndRepositories(name, teams.flatMap(t => t.repositories).sortBy(_.name))
+//      }.toList
+//
+//    }
+//}

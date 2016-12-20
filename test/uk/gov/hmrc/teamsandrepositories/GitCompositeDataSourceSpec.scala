@@ -1,40 +1,73 @@
-/*
- * Copyright 2016 HM Revenue & Customs
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package uk.gov.hmrc.teamsandrepositories
 
-import java.time.LocalDateTime
 import java.util.Date
 
 import org.mockito.Mockito._
+import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatestplus.play.OneAppPerTest
 import uk.gov.hmrc.githubclient.{GitApiConfig, GithubApiClient}
 import uk.gov.hmrc.teamsandrepositories.config.GithubConfig
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
-class CompositeRepositoryDataSourceSpec extends WordSpec with MockitoSugar with ScalaFutures with Matchers with DefaultPatienceConfig {
+class GitCompositeDataSourceSpec extends FunSpec with Matchers with MockitoSugar with LoneElement with ScalaFutures with OptionValues with BeforeAndAfterEach with OneAppPerTest {
+
+  private val githubConfig = mock[GithubConfig]
+  private val persister = mock[TeamsAndReposPersister]
+  private val connector = mock[MongoConnector]
+  private val githubClientDecorator = mock[GithubApiClientDecorator]
+
+
+  //  val sut = new GitCompositeDataSource(githubConfig, persister, connector, githubClientDecorator)
+
+  describe("buildDataSource") {
+    it("should create the right CompositeRepositoryDataSource") {
+
+      val gitApiOpenConfig = mock[GitApiConfig]
+      val gitApiEnterpriseConfig = mock[GitApiConfig]
+
+      when(githubConfig.githubApiEnterpriseConfig).thenReturn(gitApiEnterpriseConfig)
+      when(githubConfig.githubApiOpenConfig).thenReturn(gitApiOpenConfig)
+
+      val enterpriseUrl = "enterprise.com"
+      val enterpriseKey = "enterprise.key"
+      when(gitApiEnterpriseConfig.apiUrl).thenReturn(enterpriseUrl)
+      when(gitApiEnterpriseConfig.key).thenReturn(enterpriseKey)
+
+      val openUrl = "open.com"
+      val openKey = "open.key"
+      when(gitApiOpenConfig.apiUrl).thenReturn(openUrl)
+      when(gitApiOpenConfig.key).thenReturn(openKey)
+
+      val enterpriseGithubClient = mock[GithubApiClient]
+      val openGithubClient = mock[GithubApiClient]
+      when(githubClientDecorator.githubApiClient(enterpriseUrl, enterpriseKey)).thenReturn(enterpriseGithubClient)
+      when(githubClientDecorator.githubApiClient(openUrl, openKey)).thenReturn(openGithubClient)
+
+      val compositeRepositoryDataSource = new GitCompositeDataSource(githubConfig, persister, connector, githubClientDecorator)
+
+      verify(gitApiOpenConfig).apiUrl
+      verify(gitApiOpenConfig).key
+      verify(gitApiEnterpriseConfig).apiUrl
+      verify(gitApiEnterpriseConfig).key
+
+      compositeRepositoryDataSource.dataSources.size shouldBe 2
+
+      val enterpriseDataSource: GithubV3RepositoryDataSource = compositeRepositoryDataSource.dataSources(0)
+      enterpriseDataSource shouldBe compositeRepositoryDataSource.enterpriseTeamsRepositoryDataSource
+
+      val openDataSource: GithubV3RepositoryDataSource = compositeRepositoryDataSource.dataSources(1)
+      openDataSource shouldBe compositeRepositoryDataSource.openTeamsRepositoryDataSource
+    }
+  }
 
   val now = new Date().getTime
 
-  "Retrieving team repo mappings" should {
+  describe("Retrieving team repo mappings") {
 
-    "return the combination of all input sources" in {
+    it("return the combination of all input sources") {
 
       val teamsList1 = List(
         PersistedTeamAndRepositories("A", List(GitRepository("A_r", "Some Description", "url_A", now, now))),
@@ -64,7 +97,7 @@ class CompositeRepositoryDataSourceSpec extends WordSpec with MockitoSugar with 
       result should contain(teamsList2(2))
     }
 
-    "combine teams that have the same names in both sources and sort repositories alphabetically" in {
+    it("combine teams that have the same names in both sources and sort repositories alphabetically") {
 
       val repoAA = GitRepository("A_A", "Some Description", "url_A_A", now, now)
       val repoAB = GitRepository("A_B", "Some Description", "url_A_B", now, now)

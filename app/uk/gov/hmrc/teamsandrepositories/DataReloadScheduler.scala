@@ -11,12 +11,15 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class DataReloadScheduler @Inject()(actorSystem: ActorSystem,
                                     applicationLifecycle: ApplicationLifecycle,
-                                    githubCompositeDataSourceFactory: GithubCompositeDataSourceFactory,
+                                    githubCompositeDataSource: GitCompositeDataSource,
                                     cacheConfig: CacheConfig,
                                     mongoLock: MongoLock
                                    )(implicit ec: ExecutionContext) {
 
   private val cacheDuration = cacheConfig.teamsCacheDuration
+
+  println("-" * 100)
+  println(cacheDuration)
 
   private val scheduledReload = actorSystem.scheduler.schedule(cacheDuration, cacheDuration) {
     Logger.info("Scheduled teams repository cache reload triggered")
@@ -28,7 +31,7 @@ class DataReloadScheduler @Inject()(actorSystem: ActorSystem,
     def reload: Future[Seq[PersistedTeamAndRepositories]] = {
       mongoLock.tryLock {
         Logger.info(s"Starting mongo update")
-        githubCompositeDataSourceFactory.buildDataSource.traverseDatasources
+        githubCompositeDataSource.traverseDataSources
       } map { _.getOrElse(throw new RuntimeException(s"Mongo is locked for ${mongoLock.lockId}"))
       } map { r =>
         Logger.info(s"mongo update completed")

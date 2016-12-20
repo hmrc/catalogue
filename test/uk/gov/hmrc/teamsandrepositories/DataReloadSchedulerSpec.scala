@@ -18,13 +18,13 @@ import scala.concurrent.{ExecutionContext, Future}
 class DataReloadSchedulerSpec extends PlaySpec with MockitoSugar with Results with OptionValues with OneServerPerSuite with Eventually {
 
   val mockCacheConfig = mock[CacheConfig]
-  val mockGithubCompositeDataSourceFactory = mock[GithubCompositeDataSourceFactory]
+  val mockGitCompositeDataSource = mock[GitCompositeDataSource]
 
-  var callCounter = 0
-//  private val synchroniser = GithubDataSynchroniser{() => callCounter += 1; Future(Nil)}
-  val compositeDatasource = mock[CompositeRepositoryDataSource]
+  //  var callCounter = 0
+  //  private val synchroniser = GithubDataSynchroniser{() => callCounter += 1; Future(Nil)}
 
-  when(mockGithubCompositeDataSourceFactory.buildDataSource).thenReturn(compositeDatasource)
+  //!@ Do we need to mock the return value here
+    when(mockGitCompositeDataSource.traverseDataSources).thenReturn(Future(Nil))
 
   when(mockCacheConfig.teamsCacheDuration).thenReturn(100 millisecond)
 
@@ -38,12 +38,12 @@ class DataReloadSchedulerSpec extends PlaySpec with MockitoSugar with Results wi
     val testScheduler =
       new DataReloadScheduler(actorSystem = app.actorSystem,
         applicationLifecycle = app.injector.instanceOf[ApplicationLifecycle],
-         githubCompositeDataSourceFactory = mockGithubCompositeDataSourceFactory,
+        githubCompositeDataSource = mockGitCompositeDataSource,
         cacheConfig = mockCacheConfig,
         mongoLock = testMongoLock)
 
-    verify(mockGithubCompositeDataSourceFactory, Mockito.timeout(300).atLeast(2)).buildDataSource
-    callCounter must be >=  2
+    verify(mockGitCompositeDataSource, Mockito.timeout(500).atLeast(2)).traverseDataSources
+    //    callCounter must be >=  2
 
   }
 }

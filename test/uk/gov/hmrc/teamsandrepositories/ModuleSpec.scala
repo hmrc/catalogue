@@ -20,39 +20,28 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 
+import play.api.inject.bind
 
 class ModuleSpec extends PlaySpec with MockitoSugar with Results with OptionValues with OneServerPerSuite with Eventually {
 
-  //  extends WordSpec
-  //    with MockitoSugar
-  //    with Matchers
-  //{
-
-  val mockCacheConfig = mock[CacheConfig]
-  val mockGithubCompositeDataSourceFactory = mock[GithubCompositeDataSourceFactory]
-
-//  var callCounter = 0
-//  private val synchroniser = GithubDataSynchroniser { () => callCounter += 1; Future(Nil) }
-  val synchroniser = mock[CompositeRepositoryDataSource]
-
-  when(mockGithubCompositeDataSourceFactory.buildDataSource).thenReturn(synchroniser)
-
-  when(mockCacheConfig.teamsCacheDuration).thenReturn(100 millisecond)
-
   val testMongoLock = new MongoLock(mock[MongoConnector]) {
     override def tryLock[T](body: => Future[T])(implicit ec: ExecutionContext): Future[Option[T]] =
-      body.map(Some(_))
+    body.map(Some(_))
   }
 
-  import play.api.inject.bind
+
+  val mockCacheConfig = mock[CacheConfig]
+  when(mockCacheConfig.teamsCacheDuration).thenReturn(100 millisecond)
+
+  val mockCompositeRepositoryDataSource = mock[GitCompositeDataSource]
+  when(mockCompositeRepositoryDataSource.traverseDataSources).thenReturn(Future.successful(Nil))
 
   implicit override lazy val app: Application =
        new GuiceApplicationBuilder()
          .disable(classOf[com.kenshoo.play.metrics.PlayModule], classOf[Module])
          .overrides(
            bind[CacheConfig].toInstance(mockCacheConfig),
-//           bind[ApplicationLifecycle].toInstance(mock[ApplicationLifecycle]),
-           bind[GithubCompositeDataSourceFactory].toInstance(mockGithubCompositeDataSourceFactory),
+           bind[GitCompositeDataSource].toInstance(mockCompositeRepositoryDataSource),
            bind[MongoLock].toInstance(testMongoLock)
          )
          .overrides(new Module())
@@ -65,9 +54,8 @@ class ModuleSpec extends PlaySpec with MockitoSugar with Results with OptionValu
 
     val key = Key.get(new TypeLiteral[DataReloadScheduler]() {})
 
-    guiceInjector.getInstance(key).isInstanceOf[DataReloadScheduler] mustBe (true)
-    verify(mockGithubCompositeDataSourceFactory, Mockito.timeout(500).atLeast(2)).buildDataSource
-//!@    callCounter must be >= 2
+    guiceInjector.getInstance(key).isInstanceOf[DataReloadScheduler] mustBe true
+    verify(mockCompositeRepositoryDataSource, Mockito.timeout(500).atLeast(2)).traverseDataSources
 
   }
 }
