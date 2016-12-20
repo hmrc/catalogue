@@ -44,7 +44,7 @@ object PersistedTeamAndRepositories {
 
 }
 
-class TeamsAndReposPersister @Inject()(mongoTeamsAndReposPersister: MongoTeamsAndReposPersister, mongoUpdateTimePersister: MongoUpdateTimePersister) {
+class TeamsAndReposPersister @Inject()(mongoTeamsAndReposPersister: MongoTeamsAndRepositoriesPersister, mongoUpdateTimePersister: MongoUpdateTimePersister) {
 
   val teamsAndRepositoriesTimestampKeyName = "teamsAndRepositories.updated"
 
@@ -72,7 +72,7 @@ class TeamsAndReposPersister @Inject()(mongoTeamsAndReposPersister: MongoTeamsAn
 }
 
 @Singleton
-case class MongoTeamsAndReposPersister @Inject()(mongoConnector: MongoConnector)
+class MongoTeamsAndRepositoriesPersister @Inject()(mongoConnector: MongoConnector)
   extends ReactiveRepository[PersistedTeamAndRepositories, BSONObjectID](
     collectionName = "teamsAndRepositories",
     mongo = mongoConnector.db,
@@ -131,7 +131,7 @@ object KeyAndTimestamp {
 
 
 @Singleton
-case class MongoUpdateTimePersister @Inject()(mongoConnector: MongoConnector)
+class MongoUpdateTimePersister @Inject()(mongoConnector: MongoConnector)
   extends ReactiveRepository[KeyAndTimestamp, BSONObjectID](
     collectionName = "updateTime",
     mongo = mongoConnector.db,

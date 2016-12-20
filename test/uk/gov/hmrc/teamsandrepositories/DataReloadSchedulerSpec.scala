@@ -20,11 +20,7 @@ class DataReloadSchedulerSpec extends PlaySpec with MockitoSugar with Results wi
   val mockCacheConfig = mock[CacheConfig]
   val mockGitCompositeDataSource = mock[GitCompositeDataSource]
 
-  //  var callCounter = 0
-  //  private val synchroniser = GithubDataSynchroniser{() => callCounter += 1; Future(Nil)}
-
-  //!@ Do we need to mock the return value here
-    when(mockGitCompositeDataSource.traverseDataSources).thenReturn(Future(Nil))
+  when(mockGitCompositeDataSource.traverseDataSources).thenReturn(Future(Nil))
 
   when(mockCacheConfig.teamsCacheDuration).thenReturn(100 millisecond)
 
@@ -43,7 +39,5 @@ class DataReloadSchedulerSpec extends PlaySpec with MockitoSugar with Results wi
         mongoLock = testMongoLock)
 
     verify(mockGitCompositeDataSource, Mockito.timeout(500).atLeast(2)).traverseDataSources
-    //    callCounter must be >=  2
-
   }
 }

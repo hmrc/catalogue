@@ -13,7 +13,7 @@ import scala.concurrent.Future
 
 class TeamsAndReposPersisterSpec extends WordSpec with Matchers with OptionValues with MockitoSugar with LoneElement with MongoSpecSupport with ScalaFutures with BeforeAndAfterEach with OneAppPerSuite {
 
-  private val teamsAndReposPersister = mock[MongoTeamsAndReposPersister]
+  private val teamsAndReposPersister = mock[MongoTeamsAndRepositoriesPersister]
   private val updateTimePersister = mock[MongoUpdateTimePersister]
 
   val teamAndRepositories = PersistedTeamAndRepositories("teamX", Nil)

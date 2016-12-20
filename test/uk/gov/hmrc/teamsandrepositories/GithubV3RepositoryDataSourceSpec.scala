@@ -43,7 +43,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
   val ec = BlockingIOExecutionContext.executionContext
 
-  class StubTeamsAndReposPersister extends TeamsAndReposPersister(mock[MongoTeamsAndReposPersister], mock[MongoUpdateTimePersister]) {
+  class StubTeamsAndReposPersister extends TeamsAndReposPersister(mock[MongoTeamsAndRepositoriesPersister], mock[MongoUpdateTimePersister]) {
     var captor: List[PersistedTeamAndRepositories] = Nil
 
     override def update(teamsAndRepositories: PersistedTeamAndRepositories): Future[PersistedTeamAndRepositories] = {
