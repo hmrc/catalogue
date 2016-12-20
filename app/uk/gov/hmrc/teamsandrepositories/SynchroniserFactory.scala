@@ -7,15 +7,21 @@ import uk.gov.hmrc.teamsandrepositories.config.GithubConfig
 
 //!@ test this
 @Singleton
-case class SynchroniserFactory @Inject()(githubConfig: GithubConfig, persister: TeamsAndReposPersister, mongoConnector: MongoConnector) {
-  def getSynchroniser: GithubDataSynchroniser = {
-    val url = githubConfig.githubApiEnterpriseConfig.apiUrl
+case class SynchroniserFactory @Inject()(githubConfig: GithubConfig,
+                                         persister: TeamsAndReposPersister,
+                                         mongoConnector: MongoConnector,
+                                         githubApiClientDecorator: GithubApiClientDecorator) {
 
-    val gitApiEnterpriseClient = GithubApiClient(url, githubConfig.githubApiEnterpriseConfig.key)
+  def getSynchroniser: GithubDataSynchroniser = {
+    val gitApiEnterpriseClient =
+      githubApiClientDecorator.githubApiClient(githubConfig.githubApiEnterpriseConfig.apiUrl, githubConfig.githubApiEnterpriseConfig.key)
+
     val enterpriseTeamsRepositoryDataSource: RepositoryDataSource =
       new GithubV3RepositoryDataSource(githubConfig, gitApiEnterpriseClient, persister, isInternal = true)
 
-    val gitOpenClient = GithubApiClient(githubConfig.githubApiOpenConfig.apiUrl, githubConfig.githubApiOpenConfig.key)
+    val gitOpenClient =
+      githubApiClientDecorator.githubApiClient(githubConfig.githubApiOpenConfig.apiUrl, githubConfig.githubApiOpenConfig.key)
+
     val openTeamsRepositoryDataSource: RepositoryDataSource =
       new GithubV3RepositoryDataSource(githubConfig, gitOpenClient, persister, isInternal = false)
 
@@ -24,4 +30,9 @@ case class SynchroniserFactory @Inject()(githubConfig: GithubConfig, persister: 
 
     GithubDataSynchroniser(dataSynchroniserFunc)
   }
+}
+
+@Singleton
+case class GithubApiClientDecorator @Inject()() {
+  def githubApiClient(apiUrl: String, apiToken: String) = GithubApiClient(apiUrl, apiToken)
 }
