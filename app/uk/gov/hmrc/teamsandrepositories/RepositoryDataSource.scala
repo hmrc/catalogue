@@ -51,17 +51,17 @@ object GitRepository {
 }
 
 
-trait RepositoryDataSource {
-  //  def getTeamRepoMapping: Future[Seq[TeamRepositories]]
-
-  def persistTeamsAndReposMapping(): Future[Seq[PersistedTeamAndRepositories]]
-}
+//trait RepositoryDataSource {
+//  //  def getTeamRepoMapping: Future[Seq[TeamRepositories]]
+//
+//  def persistTeamsAndReposMapping(): Future[Seq[PersistedTeamAndRepositories]]
+//}
 
 @Singleton
 class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
                                              gh: GithubApiClient,
                                              persister: TeamsAndReposPersister,
-                                             val isInternal: Boolean) extends RepositoryDataSource {
+                                             val isInternal: Boolean) {
 
   import BlockingIOExecutionContext._
 
@@ -72,7 +72,7 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
   val retries: Int = 5
   val initialDuration: Double = 50
 
-  override def persistTeamsAndReposMapping(): Future[Seq[PersistedTeamAndRepositories]] = {
+  def persistTeamsAndReposMapping(): Future[Seq[PersistedTeamAndRepositories]] = {
     exponentialRetry(retries, initialDuration) {
       gh.getOrganisations.flatMap { (orgs: Seq[GhOrganisation]) =>
         Future.sequence(orgs.map(org => traverseOrganisation(org, persister))).map {
@@ -177,11 +177,11 @@ class MongoLock @Inject()(mongoConnector: MongoConnector) extends LockKeeper {
 }
 
 @Singleton
-class CompositeRepositoryDataSource @Inject()(val dataSources: List[RepositoryDataSource]) extends RepositoryDataSource {
+class CompositeRepositoryDataSource @Inject()(val dataSources: List[GithubV3RepositoryDataSource]) {
 
   import BlockingIOExecutionContext._
 
-  override def persistTeamsAndReposMapping(): Future[Seq[PersistedTeamAndRepositories]] =
+  def traverseDatasources: Future[Seq[PersistedTeamAndRepositories]] =
     Future.sequence(dataSources.map(_.persistTeamsAndReposMapping())).map { results =>
       val flattened = results.flatten
       Logger.info(s"Combining ${flattened.length} results from ${dataSources.length} sources")

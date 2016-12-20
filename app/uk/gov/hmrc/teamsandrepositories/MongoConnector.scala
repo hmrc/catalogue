@@ -12,6 +12,4 @@ class MongoConnector @Inject()(application: Application) {
   val db: () => DB = application.injector.instanceOf[ReactiveMongoComponent].mongoConnector.db
 }
 
-case class GithubDataSynchroniser(run: () => Future[Seq[PersistedTeamAndRepositories]])
-
 

@@ -18,12 +18,13 @@ import scala.concurrent.{ExecutionContext, Future}
 class DataReloadSchedulerSpec extends PlaySpec with MockitoSugar with Results with OptionValues with OneServerPerSuite with Eventually {
 
   val mockCacheConfig = mock[CacheConfig]
-  val mockSynchroniserFactory = mock[SynchroniserFactory]
+  val mockGithubCompositeDataSourceFactory = mock[GithubCompositeDataSourceFactory]
 
   var callCounter = 0
-  private val synchroniser = GithubDataSynchroniser{() => callCounter += 1; Future(Nil)}
+//  private val synchroniser = GithubDataSynchroniser{() => callCounter += 1; Future(Nil)}
+  val compositeDatasource = mock[CompositeRepositoryDataSource]
 
-  when(mockSynchroniserFactory.getSynchroniser).thenReturn(synchroniser)
+  when(mockGithubCompositeDataSourceFactory.buildDataSource).thenReturn(compositeDatasource)
 
   when(mockCacheConfig.teamsCacheDuration).thenReturn(100 millisecond)
 
@@ -37,11 +38,11 @@ class DataReloadSchedulerSpec extends PlaySpec with MockitoSugar with Results wi
     val testScheduler =
       new DataReloadScheduler(actorSystem = app.actorSystem,
         applicationLifecycle = app.injector.instanceOf[ApplicationLifecycle],
-        synchroniserFactory = mockSynchroniserFactory,
+         githubCompositeDataSourceFactory = mockGithubCompositeDataSourceFactory,
         cacheConfig = mockCacheConfig,
         mongoLock = testMongoLock)
 
-    verify(mockSynchroniserFactory, Mockito.timeout(300).atLeast(2)).getSynchroniser
+    verify(mockGithubCompositeDataSourceFactory, Mockito.timeout(300).atLeast(2)).buildDataSource
     callCounter must be >=  2
 
   }

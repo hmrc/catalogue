@@ -44,14 +44,14 @@ class CompositeRepositoryDataSourceSpec extends WordSpec with MockitoSugar with 
         PersistedTeamAndRepositories("E", List(GitRepository("E_r", "Some Description", "url_E", now, now))),
         PersistedTeamAndRepositories("F", List(GitRepository("F_r", "Some Description", "url_F", now, now))))
 
-      val dataSource1 = mock[RepositoryDataSource]
+      val dataSource1 = mock[GithubV3RepositoryDataSource]
       when(dataSource1.persistTeamsAndReposMapping).thenReturn(Future.successful(teamsList1))
 
-      val dataSource2 = mock[RepositoryDataSource]
+      val dataSource2 = mock[GithubV3RepositoryDataSource]
       when(dataSource2.persistTeamsAndReposMapping).thenReturn(Future.successful(teamsList2))
 
       val compositeDataSource = new CompositeRepositoryDataSource(List(dataSource1, dataSource2))
-      val result = compositeDataSource.persistTeamsAndReposMapping.futureValue
+      val result = compositeDataSource.traverseDatasources.futureValue
 
       result.length shouldBe 6
       result should contain (teamsList1.head)
@@ -77,14 +77,14 @@ class CompositeRepositoryDataSourceSpec extends WordSpec with MockitoSugar with 
         PersistedTeamAndRepositories("A", List(repoAA)),
         PersistedTeamAndRepositories("D", List(GitRepository("D_r", "Some Description", "url_D", now, now))))
 
-      val dataSource1 = mock[RepositoryDataSource]
+      val dataSource1 = mock[GithubV3RepositoryDataSource]
       when(dataSource1.persistTeamsAndReposMapping()).thenReturn(Future.successful(teamsList1))
 
-      val dataSource2 = mock[RepositoryDataSource]
+      val dataSource2 = mock[GithubV3RepositoryDataSource]
       when(dataSource2.persistTeamsAndReposMapping()).thenReturn(Future.successful(teamsList2))
 
       val compositeDataSource = new CompositeRepositoryDataSource(List(dataSource1, dataSource2))
-      val result = compositeDataSource.persistTeamsAndReposMapping().futureValue
+      val result = compositeDataSource.traverseDatasources.futureValue
 
       result.length shouldBe 4
       result.find(_.teamName == "A").get.repositories should contain inOrderOnly (

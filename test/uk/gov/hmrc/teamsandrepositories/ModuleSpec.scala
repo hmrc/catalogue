@@ -29,12 +29,13 @@ class ModuleSpec extends PlaySpec with MockitoSugar with Results with OptionValu
   //{
 
   val mockCacheConfig = mock[CacheConfig]
-  val mockSynchroniserFactory = mock[SynchroniserFactory]
+  val mockGithubCompositeDataSourceFactory = mock[GithubCompositeDataSourceFactory]
 
-  var callCounter = 0
-  private val synchroniser = GithubDataSynchroniser { () => callCounter += 1; Future(Nil) }
+//  var callCounter = 0
+//  private val synchroniser = GithubDataSynchroniser { () => callCounter += 1; Future(Nil) }
+  val synchroniser = mock[CompositeRepositoryDataSource]
 
-  when(mockSynchroniserFactory.getSynchroniser).thenReturn(synchroniser)
+  when(mockGithubCompositeDataSourceFactory.buildDataSource).thenReturn(synchroniser)
 
   when(mockCacheConfig.teamsCacheDuration).thenReturn(100 millisecond)
 
@@ -51,7 +52,7 @@ class ModuleSpec extends PlaySpec with MockitoSugar with Results with OptionValu
          .overrides(
            bind[CacheConfig].toInstance(mockCacheConfig),
 //           bind[ApplicationLifecycle].toInstance(mock[ApplicationLifecycle]),
-           bind[SynchroniserFactory].toInstance(mockSynchroniserFactory),
+           bind[GithubCompositeDataSourceFactory].toInstance(mockGithubCompositeDataSourceFactory),
            bind[MongoLock].toInstance(testMongoLock)
          )
          .overrides(new Module())
@@ -65,8 +66,8 @@ class ModuleSpec extends PlaySpec with MockitoSugar with Results with OptionValu
     val key = Key.get(new TypeLiteral[DataReloadScheduler]() {})
 
     guiceInjector.getInstance(key).isInstanceOf[DataReloadScheduler] mustBe (true)
-    verify(mockSynchroniserFactory, Mockito.timeout(500).atLeast(2)).getSynchroniser
-    callCounter must be >= 2
+    verify(mockGithubCompositeDataSourceFactory, Mockito.timeout(500).atLeast(2)).buildDataSource
+//!@    callCounter must be >= 2
 
   }
 }
