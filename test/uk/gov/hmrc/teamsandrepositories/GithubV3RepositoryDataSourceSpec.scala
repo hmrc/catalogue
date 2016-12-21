@@ -16,10 +16,12 @@
 
 package uk.gov.hmrc.teamsandrepositories
 
+import java.time.LocalDateTime
 import java.util.Date
 
 import org.mockito.ArgumentMatchers._
-import org.mockito.Mockito.when
+import org.mockito.Mockito
+import org.mockito.Mockito._
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
@@ -29,7 +31,6 @@ import uk.gov.hmrc.githubclient
 import uk.gov.hmrc.githubclient.GithubApiClient
 import uk.gov.hmrc.teamsandrepositories.config.GithubConfig
 
-import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
 
 class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with Matchers with DefaultPatienceConfig with MockitoSugar with SpanSugar with BeforeAndAfterEach {
@@ -51,6 +52,8 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
       Future(teamsAndRepositories)(ec)
     }
 
+    override def getAllTeamAndRepos: Future[(Seq[PersistedTeamAndRepositories], Option[LocalDateTime])] =
+      Future.successful((Nil, None))
   }
 
 
@@ -77,6 +80,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
       when(githubClient.getTags(anyString(), anyString())(any[ExecutionContext])).thenReturn(Future.successful(List.empty))
 
 
+
       val eventualPersistedTeamAndRepositorieses = dataSource.persistTeamsAndReposMapping()
 
 
@@ -87,6 +91,32 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
         PersistedTeamAndRepositories("D", List()))
     }
 
+//    "Return a list of teams and repositories, filtering out forks" in {
+//
+//      when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
+//      when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
+//
+//      when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC", 1), githubclient.GhOrganisation("DDCN", 2))))
+//      when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("A", 1), githubclient.GhTeam("B", 2))))
+//      when(githubClient.getTeamsForOrganisation("DDCN")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("C", 3), githubclient.GhTeam("D", 4))))
+//      when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("A_r", "some description", 1, "url_A", fork = false, now, now), githubclient.GhRepository("A_r2", "some description", 5, "url_A2", fork = true, now, now))))
+//      when(githubClient.getReposForTeam(2)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("B_r", "some description", 2, "url_B", fork = false, now, now))))
+//      when(githubClient.getReposForTeam(3)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("C_r", "some description", 3, "url_C", fork = false, now, now))))
+//      when(githubClient.getReposForTeam(4)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("D_r", "some description", 4, "url_D", fork = true, now, now))))
+//      when(githubClient.repoContainsContent(anyString(), anyString(), anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
+//      when(githubClient.getTags(anyString(), anyString())(any[ExecutionContext])).thenReturn(Future.successful(List.empty))
+//
+//
+//
+//      val eventualPersistedTeamAndRepositorieses = dataSource.persistTeamsAndReposMapping()
+//
+//
+//      eventualPersistedTeamAndRepositorieses.futureValue shouldBe List(
+//        PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now))),
+//        PersistedTeamAndRepositories("B", List(GitRepository("B_r", "some description", "url_B", now, now))),
+//        PersistedTeamAndRepositories("C", List(GitRepository("C_r", "some description", "url_C", now, now))),
+//        PersistedTeamAndRepositories("D", List()))
+//    }
 
     "Set internal = true if the DataSource is marked as internal" in {
 
@@ -265,7 +295,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
       val persister = new StubTeamsAndReposPersister
 
-      val repositories: Seq[PersistedTeamAndRepositories] = dataSource.persistTeamsAndReposMapping().futureValue
+      val repositories = dataSource.persistTeamsAndReposMapping().futureValue
 
       repositories should contain(PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Library))))
 
@@ -292,7 +322,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
       val persister = new StubTeamsAndReposPersister
 
-      val repositories: Seq[PersistedTeamAndRepositories] = dataSource.persistTeamsAndReposMapping().futureValue
+      val repositories = dataSource.persistTeamsAndReposMapping().futureValue
 
       repositories should contain(PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Other))))
 
@@ -344,6 +374,34 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
         PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now))))
     }
 
+    "Removes redundant teams" in {
 
+      when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
+      when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
+
+      when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC", 1))))
+      when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("team1", 1))))
+
+      when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("A_r", "some description", 1, "url_A", false, now, now))))
+
+      when(githubClient.repoContainsContent(anyString(), anyString(), anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
+
+
+      val persister2 = mock[TeamsAndReposPersister]
+
+      val team1Repos = PersistedTeamAndRepositories("team1", Nil)
+      val deletedTeamRepos = PersistedTeamAndRepositories("deletedTeam", Nil)
+
+      when(persister2.update(any())).thenReturn(Future.successful(team1Repos))
+      when(persister2.getAllTeamAndRepos).thenReturn(Future.successful((Seq(team1Repos, deletedTeamRepos), None)))
+      when(persister2.deleteTeams(Seq("deletedTeam"))).thenReturn(Future.successful(Seq("deletedTeam")))
+      when(persister2.updateTimestamp(any())).thenReturn(Future.successful(true))
+
+      val dataSource = new GithubV3RepositoryDataSource(githubConfig, githubClient, persister2, isInternal = false)
+
+      dataSource.persistTeamsAndReposMapping()
+
+      verify(persister2, Mockito.timeout(1000)).deleteTeams(Seq("deletedTeam"))
+    }
   }
 }

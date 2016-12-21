@@ -2,6 +2,7 @@ package uk.gov.hmrc.teamsandrepositories
 
 import java.time.LocalDateTime
 
+import org.mockito.Mockito
 import org.mockito.Mockito._
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
@@ -18,12 +19,12 @@ class TeamsAndReposPersisterSpec extends WordSpec with Matchers with OptionValue
 
   val teamAndRepositories = PersistedTeamAndRepositories("teamX", Nil)
 
-  val sut = new TeamsAndReposPersister(teamsAndReposPersister, updateTimePersister)
+  val persister = new TeamsAndReposPersister(teamsAndReposPersister, updateTimePersister)
 
   "TeamsAndReposPersisterSpec" should {
     "delegate to teamsAndReposPersister's update" in {
 
-      sut.update(teamAndRepositories)
+      persister.update(teamAndRepositories)
 
       verify(teamsAndReposPersister).update(teamAndRepositories)
     }
@@ -34,10 +35,10 @@ class TeamsAndReposPersisterSpec extends WordSpec with Matchers with OptionValue
       when(teamsAndReposPersister.getAllTeamAndRepos)
         .thenReturn(Future.successful(List(teamAndRepositories)))
 
-      when(updateTimePersister.get(sut.teamsAndRepositoriesTimestampKeyName))
-        .thenReturn(Future.successful(Some(KeyAndTimestamp(sut.teamsAndRepositoriesTimestampKeyName, now))))
+      when(updateTimePersister.get(persister.teamsAndRepositoriesTimestampKeyName))
+        .thenReturn(Future.successful(Some(KeyAndTimestamp(persister.teamsAndRepositoriesTimestampKeyName, now))))
 
-      val retVal = sut.getAllTeamAndRepos
+      val retVal = persister.getAllTeamAndRepos
 
       retVal.futureValue._1 shouldBe Seq(teamAndRepositories)
       retVal.futureValue._2.value shouldBe now
@@ -45,22 +46,27 @@ class TeamsAndReposPersisterSpec extends WordSpec with Matchers with OptionValue
 
     "delegate to teamsAndReposPersister and updateTimePersister for clearAll" in {
 
-      sut.clearAllData
+      persister.clearAllData
 
       verify(teamsAndReposPersister, times(1)).clearAllData
-      verify(updateTimePersister, times(1)).remove(sut.teamsAndRepositoriesTimestampKeyName)
+      verify(updateTimePersister, times(1)).remove(persister.teamsAndRepositoriesTimestampKeyName)
     }
 
     "delegate to updateTimePersister for updating timestamp" in {
       val now = LocalDateTime.now
 
-      sut.updateTimestamp(now)
+      persister.updateTimestamp(now)
 
-      verify(updateTimePersister, times(1)).update(KeyAndTimestamp(sut.teamsAndRepositoriesTimestampKeyName, now))
+      verify(updateTimePersister, times(1)).update(KeyAndTimestamp(persister.teamsAndRepositoriesTimestampKeyName, now))
+    }
 
+    "delegate to teamsAndReposPersister for removing a team in mongo" in {
+      val now = LocalDateTime.now
 
+      persister.deleteTeams(Seq("team1", "team2"))
+
+      verify(teamsAndReposPersister).deleteTeam("team1")
+      verify(teamsAndReposPersister).deleteTeam("team2")
     }
   }
-
-
 }

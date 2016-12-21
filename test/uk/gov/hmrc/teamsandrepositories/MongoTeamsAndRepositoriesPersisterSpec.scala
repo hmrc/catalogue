@@ -55,7 +55,7 @@ class MongoTeamsAndRepositoriesPersisterSpec extends UnitSpec with LoneElement w
       await(mongoTeamsAndReposPersister.clearAllData)
       val all2 = await(mongoTeamsAndReposPersister.getAllTeamAndRepos)
 
-      all2.size shouldBe 2
+      all2.size shouldBe 0
     }
   }
 
@@ -85,7 +85,31 @@ class MongoTeamsAndRepositoriesPersisterSpec extends UnitSpec with LoneElement w
 
   }
 
+  "delete" should {
+    "remove all given teams" in {
+      val gitRepository1 = GitRepository("repo-name1", "Desc1", "url1", 1, 2, false, RepoType.Deployable)
+      val gitRepository2 = GitRepository("repo-name2", "Desc2", "url2", 3, 4, true, RepoType.Library)
 
-  ""
+      val gitRepository3 = GitRepository("repo-name3", "Desc3", "url3", 1, 2, false, RepoType.Deployable)
+      val gitRepository4 = GitRepository("repo-name4", "Desc4", "url4", 3, 4, true, RepoType.Library)
+
+      val teamAndRepositories1 = PersistedTeamAndRepositories("test-team1", List(gitRepository1, gitRepository2))
+      val teamAndRepositories2 = PersistedTeamAndRepositories("test-team2", List(gitRepository3, gitRepository4))
+      val teamAndRepositories3 = PersistedTeamAndRepositories("test-team3", List(gitRepository1))
+
+      await(mongoTeamsAndReposPersister.add(teamAndRepositories1))
+      await(mongoTeamsAndReposPersister.add(teamAndRepositories2))
+      await(mongoTeamsAndReposPersister.add(teamAndRepositories3))
+
+      List("test-team1", "test-team2").foreach { teamName =>
+        await(mongoTeamsAndReposPersister.deleteTeam(teamName))
+      }
+
+      val allRemainingTeams = await(mongoTeamsAndReposPersister.getAllTeamAndRepos)
+      allRemainingTeams.size shouldBe 1
+
+      allRemainingTeams shouldBe List(teamAndRepositories3)
+    }
+  }
 
 }

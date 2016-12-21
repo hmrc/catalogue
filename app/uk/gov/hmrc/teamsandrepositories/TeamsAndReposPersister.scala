@@ -19,7 +19,9 @@ package uk.gov.hmrc.teamsandrepositories
 import java.time.{LocalDateTime, ZoneOffset}
 
 import com.google.inject.{Inject, Singleton}
+import com.sun.org.apache.xpath.internal.functions.FuncTrue
 import play.api.libs.json._
+import reactivemongo.api.commands.WriteResult
 import reactivemongo.api.indexes.{Index, IndexType}
 import reactivemongo.bson.BSONObjectID
 import uk.gov.hmrc.mongo.ReactiveRepository
@@ -27,6 +29,7 @@ import uk.gov.hmrc.teamsandrepositories.FutureHelpers.withTimerAndCounter
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 
 case class PersistedTeamAndRepositories(teamName: String,
@@ -65,10 +68,13 @@ class TeamsAndReposPersister @Inject()(mongoTeamsAndReposPersister: MongoTeamsAn
     mongoUpdateTimePersister.remove(teamsAndRepositoriesTimestampKeyName)
   }
 
-  def updateTimestamp(timestamp: LocalDateTime) = {
+  def updateTimestamp(timestamp: LocalDateTime): Future[Boolean] = {
     mongoUpdateTimePersister.update(KeyAndTimestamp(teamsAndRepositoriesTimestampKeyName, timestamp))
   }
 
+  def deleteTeams(teamNames: Seq[String]): Future[Seq[String]] = {
+    Future.sequence(teamNames.map(mongoTeamsAndReposPersister.deleteTeam))
+  }
 }
 
 @Singleton
@@ -99,7 +105,6 @@ class MongoTeamsAndRepositoriesPersister @Inject()(mongoConnector: MongoConnecto
     }
   }
 
-
   def add(teamsAndRepository: PersistedTeamAndRepositories): Future[Boolean] = {
     withTimerAndCounter("mongo.write") {
       insert(teamsAndRepository) map {
@@ -109,11 +114,18 @@ class MongoTeamsAndRepositoriesPersister @Inject()(mongoConnector: MongoConnecto
     }
   }
 
-
   def getAllTeamAndRepos: Future[List[PersistedTeamAndRepositories]] = findAll()
 
   def clearAllData: Future[Boolean] = super.removeAll().map(!_.hasErrors)
 
+  def deleteTeam(teamName: String): Future[String] = {
+    withTimerAndCounter("mongo.cleanup") {
+      collection.remove(query = Json.obj("teamName" -> Json.toJson(teamName))).map {
+        case lastError if lastError.inError => throw new RuntimeException(s"failed to remove $teamName")
+        case _ => teamName
+      }
+    }
+  }
 }
 
 case class KeyAndTimestamp(keyName: String, timestamp: LocalDateTime)

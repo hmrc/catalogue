@@ -100,7 +100,7 @@ class TeamsRepositoriesController @Inject()(dataReloadScheduler: DataReloadSched
 
   import scala.collection.JavaConverters._
 
-  val CacheTimestampHeaderName = "X-Cache-Timestamp"
+  val TimestampHeaderName = "X-Cache-Timestamp"
 
   val repositoriesToIgnore: List[String] = configuration.getStringList("shared.repositories").fold(List.empty[String])(_.asScala.toList)
 
@@ -117,7 +117,7 @@ class TeamsRepositoriesController @Inject()(dataReloadScheduler: DataReloadSched
         case None =>
           NotFound
         case Some(x: RepositoryDetails) =>
-          Ok(Json.toJson(x)).withHeaders(CacheTimestampHeaderName -> format(timestamp))
+          Ok(Json.toJson(x)).withHeaders(TimestampHeaderName -> format(timestamp))
       }
     }
   }
@@ -126,14 +126,14 @@ class TeamsRepositoriesController @Inject()(dataReloadScheduler: DataReloadSched
   def services() = Action.async { implicit request =>
     mongoTeamsAndReposPersister.getAllTeamAndRepos.map { case (allTeamsAndRepos, timestamp) =>
       Ok(determineServicesResponse(request, allTeamsAndRepos))
-        .withHeaders(CacheTimestampHeaderName -> format(timestamp))
+        .withHeaders(TimestampHeaderName -> format(timestamp))
     }
   }
 
   def libraries() = Action.async { implicit request =>
     mongoTeamsAndReposPersister.getAllTeamAndRepos.map { case (allTeamsAndRepos, timestamp) =>
       Ok(determineLibrariesResponse(request, allTeamsAndRepos))
-        .withHeaders(CacheTimestampHeaderName -> format(timestamp))
+        .withHeaders(TimestampHeaderName -> format(timestamp))
     }
   }
 
@@ -141,14 +141,14 @@ class TeamsRepositoriesController @Inject()(dataReloadScheduler: DataReloadSched
   def allRepositories() = Action.async {
     mongoTeamsAndReposPersister.getAllTeamAndRepos.map { case (allTeamsAndRepos, timestamp) =>
       Ok(Json.toJson(allTeamsAndRepos.allRepositories))
-        .withHeaders(CacheTimestampHeaderName -> format(timestamp))
+        .withHeaders(TimestampHeaderName -> format(timestamp))
     }
   }
 
   def teams() = Action.async { implicit request =>
     mongoTeamsAndReposPersister.getAllTeamAndRepos.map { case (allTeamsAndRepos, timestamp) =>
       Results.Ok(Json.toJson(allTeamsAndRepos.asTeamList(repositoriesToIgnore)))
-        .withHeaders(CacheTimestampHeaderName -> format(timestamp))
+        .withHeaders(TimestampHeaderName -> format(timestamp))
     }
   }
 
@@ -158,7 +158,7 @@ class TeamsRepositoriesController @Inject()(dataReloadScheduler: DataReloadSched
       (allTeamsAndRepos.asTeamRepositoryNameList(teamName) match {
         case None => NotFound
         case Some(x) => Results.Ok(Json.toJson(x.map { case (t, v) => (t.toString, v) }))
-      }).withHeaders(CacheTimestampHeaderName -> format(timestamp))
+      }).withHeaders(TimestampHeaderName -> format(timestamp))
     }
   }
 
@@ -169,7 +169,7 @@ class TeamsRepositoriesController @Inject()(dataReloadScheduler: DataReloadSched
       (allTeamsAndRepos.findTeam(teamName, repositoriesToIgnore) match {
         case None => NotFound
         case Some(x) => Results.Ok(Json.toJson(x))
-      }).withHeaders(CacheTimestampHeaderName -> format(timestamp))
+      }).withHeaders(TimestampHeaderName -> format(timestamp))
     }
   }
 
