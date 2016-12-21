@@ -394,14 +394,14 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
       when(persister2.update(any())).thenReturn(Future.successful(team1Repos))
       when(persister2.getAllTeamAndRepos).thenReturn(Future.successful((Seq(team1Repos, deletedTeamRepos), None)))
-      when(persister2.deleteTeams(Seq("deletedTeam"))).thenReturn(Future.successful(Seq("deletedTeam")))
+      when(persister2.deleteTeams(Set("deletedTeam"))).thenReturn(Future.successful(Set("deletedTeam")))
       when(persister2.updateTimestamp(any())).thenReturn(Future.successful(true))
 
       val dataSource = new GithubV3RepositoryDataSource(githubConfig, githubClient, persister2, isInternal = false)
 
       dataSource.persistTeamsAndReposMapping()
 
-      verify(persister2, Mockito.timeout(1000)).deleteTeams(Seq("deletedTeam"))
+      verify(persister2, Mockito.timeout(1000)).deleteTeams(Set("deletedTeam"))
     }
   }
 }

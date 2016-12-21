@@ -63,7 +63,7 @@ class TeamsAndReposPersisterSpec extends WordSpec with Matchers with OptionValue
     "delegate to teamsAndReposPersister for removing a team in mongo" in {
       val now = LocalDateTime.now
 
-      persister.deleteTeams(Seq("team1", "team2"))
+      persister.deleteTeams(Set("team1", "team2"))
 
       verify(teamsAndReposPersister).deleteTeam("team1")
       verify(teamsAndReposPersister).deleteTeam("team2")

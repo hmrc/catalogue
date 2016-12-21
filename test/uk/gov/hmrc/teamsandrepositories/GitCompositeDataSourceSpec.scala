@@ -3,6 +3,7 @@ package uk.gov.hmrc.teamsandrepositories
 import java.util.Date
 
 import org.mockito.Mockito._
+import org.mockito.{ArgumentMatchers, Mockito}
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
@@ -11,6 +12,7 @@ import uk.gov.hmrc.githubclient.{GitApiConfig, GithubApiClient}
 import uk.gov.hmrc.teamsandrepositories.config.GithubConfig
 
 import scala.concurrent.Future
+import scala.concurrent.Future.successful
 
 class GitCompositeDataSourceSpec extends FunSpec with Matchers with MockitoSugar with LoneElement with ScalaFutures with OptionValues with BeforeAndAfterEach with OneAppPerTest {
 
@@ -18,6 +20,14 @@ class GitCompositeDataSourceSpec extends FunSpec with Matchers with MockitoSugar
   private val persister = mock[TeamsAndReposPersister]
   private val connector = mock[MongoConnector]
   private val githubClientDecorator = mock[GithubApiClientDecorator]
+
+  override protected def beforeEach()= {
+      reset(githubConfig)
+      reset(persister)
+      reset(connector)
+      reset(githubClientDecorator)
+  }
+
 
 
   //  val sut = new GitCompositeDataSource(githubConfig, persister, connector, githubClientDecorator)
@@ -63,6 +73,7 @@ class GitCompositeDataSourceSpec extends FunSpec with Matchers with MockitoSugar
     }
   }
 
+
   val now = new Date().getTime
 
   describe("Retrieving team repo mappings") {
@@ -80,10 +91,10 @@ class GitCompositeDataSourceSpec extends FunSpec with Matchers with MockitoSugar
         PersistedTeamAndRepositories("F", List(GitRepository("F_r", "Some Description", "url_F", now, now))))
 
       val dataSource1 = mock[GithubV3RepositoryDataSource]
-      when(dataSource1.persistTeamsAndReposMapping).thenReturn(Future.successful(teamsList1))
+      when(dataSource1.persistTeamsAndReposMapping).thenReturn(successful(teamsList1))
 
       val dataSource2 = mock[GithubV3RepositoryDataSource]
-      when(dataSource2.persistTeamsAndReposMapping).thenReturn(Future.successful(teamsList2))
+      when(dataSource2.persistTeamsAndReposMapping).thenReturn(successful(teamsList2))
 
       val compositeDataSource = buildCompositeDataSource(dataSource1, dataSource2)
       val result = compositeDataSource.traverseDataSources.futureValue
@@ -113,10 +124,10 @@ class GitCompositeDataSourceSpec extends FunSpec with Matchers with MockitoSugar
         PersistedTeamAndRepositories("D", List(GitRepository("D_r", "Some Description", "url_D", now, now))))
 
       val dataSource1 = mock[GithubV3RepositoryDataSource]
-      when(dataSource1.persistTeamsAndReposMapping()).thenReturn(Future.successful(teamsList1))
+      when(dataSource1.persistTeamsAndReposMapping()).thenReturn(successful(teamsList1))
 
       val dataSource2 = mock[GithubV3RepositoryDataSource]
-      when(dataSource2.persistTeamsAndReposMapping()).thenReturn(Future.successful(teamsList2))
+      when(dataSource2.persistTeamsAndReposMapping()).thenReturn(successful(teamsList2))
 
       val compositeDataSource = buildCompositeDataSource(dataSource1, dataSource2)
 
@@ -131,14 +142,49 @@ class GitCompositeDataSourceSpec extends FunSpec with Matchers with MockitoSugar
       result should contain(teamsList2(1))
 
     }
+
+
+    it("should collect team names from both sources (mongo and github)") {
+
+      val dataSource1 = mock[GithubV3RepositoryDataSource]
+      val dataSource2 = mock[GithubV3RepositoryDataSource]
+
+      when(dataSource1.getTeamsNamesFromBothSources).thenReturn(TeamNamesTuple(successful(Set("team-a")), successful(Set("team-a", "team-b"))))
+
+      when(dataSource2.getTeamsNamesFromBothSources).thenReturn(TeamNamesTuple(successful(Set("team-c")), successful(Set("team-c", "team-d"))))
+
+      val compositeDataSource = buildCompositeDataSource(dataSource1, dataSource2)
+
+      val teamNamesTuple = compositeDataSource.buildTeamNamesTuple()
+
+      teamNamesTuple.ghNames.value.futureValue shouldBe Set("team-a", "team-c")
+      teamNamesTuple.mongoNames.value.futureValue shouldBe Set("team-a", "team-b", "team-c", "team-d")
+    }
+
+    it("should use persister for removing deleted teams") {
+      val dataSource1 = mock[GithubV3RepositoryDataSource]
+      val dataSource2 = mock[GithubV3RepositoryDataSource]
+
+      when(dataSource1.getTeamsNamesFromBothSources).thenReturn(TeamNamesTuple(successful(Set("team-a")), successful(Set("team-a", "team-b"))))
+      when(dataSource2.getTeamsNamesFromBothSources).thenReturn(TeamNamesTuple(successful(Set("team-c")), successful(Set("team-c", "team-d"))))
+
+      val compositeDataSource = buildCompositeDataSource(dataSource1, dataSource2)
+
+      when(persister.deleteTeams(ArgumentMatchers.any())).thenReturn(Future.successful(Set("abc")))
+      compositeDataSource.removeDeletedTeams
+
+      verify(persister, Mockito.timeout(1000)).deleteTeams(Set("team-b", "team-d"))
+    }
+
+
   }
 
   private def buildCompositeDataSource(dataSource1: GithubV3RepositoryDataSource, dataSource2: GithubV3RepositoryDataSource) = {
 
-    val githubConfig = mock[GithubConfig]
-    val persister = mock[TeamsAndReposPersister]
-    val connector = mock[MongoConnector]
-    val githubClientDecorator = mock[GithubApiClientDecorator]
+//    val githubConfig = mock[GithubConfig]
+//    val persister = mock[TeamsAndReposPersister]
+//    val connector = mock[MongoConnector]
+//    val githubClientDecorator = mock[GithubApiClientDecorator]
 
     val gitApiOpenConfig = mock[GitApiConfig]
     val gitApiEnterpriseConfig = mock[GitApiConfig]

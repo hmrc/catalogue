@@ -72,8 +72,8 @@ class TeamsAndReposPersister @Inject()(mongoTeamsAndReposPersister: MongoTeamsAn
     mongoUpdateTimePersister.update(KeyAndTimestamp(teamsAndRepositoriesTimestampKeyName, timestamp))
   }
 
-  def deleteTeams(teamNames: Seq[String]): Future[Seq[String]] = {
-    Future.sequence(teamNames.map(mongoTeamsAndReposPersister.deleteTeam))
+  def deleteTeams(teamNames: Set[String]): Future[Set[String]] = {
+      Future.sequence(teamNames.map(mongoTeamsAndReposPersister.deleteTeam))
   }
 }
 

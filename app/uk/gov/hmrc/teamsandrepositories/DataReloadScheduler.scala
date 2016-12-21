@@ -7,6 +7,7 @@ import play.api.inject.ApplicationLifecycle
 import uk.gov.hmrc.teamsandrepositories.config.CacheConfig
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 @Singleton
 class DataReloadScheduler @Inject()(actorSystem: ActorSystem,
@@ -18,24 +19,45 @@ class DataReloadScheduler @Inject()(actorSystem: ActorSystem,
 
   private val cacheDuration = cacheConfig.teamsCacheDuration
 
+
   private val scheduledReload = actorSystem.scheduler.schedule(cacheDuration, cacheDuration) {
     Logger.info("Scheduled teams repository cache reload triggered")
-    reload
+    reload.andThen {
+      case Success(v) =>
+        removeDeletedTeams
+        v
+      case Failure(t) => throw new RuntimeException("Failed to reload and persist teams and repository data from gitub", t)
+    }
   }
 
   applicationLifecycle.addStopHook(() => Future(scheduledReload.cancel()))
 
-    def reload: Future[Seq[PersistedTeamAndRepositories]] = {
-      mongoLock.tryLock {
-        Logger.info(s"Starting mongo update")
+  //!@ extract a function and reduce duplication
+  def reload: Future[Seq[PersistedTeamAndRepositories]] = {
+    mongoLock.tryLock {
+      Logger.info(s"Starting mongo update")
 
-        githubCompositeDataSource.traverseDataSources
-      } map { _.getOrElse(throw new RuntimeException(s"Mongo is locked for ${mongoLock.lockId}"))
-      } map { r =>
-        Logger.info(s"mongo update completed")
-        r
-      }
+      githubCompositeDataSource.traverseDataSources
+    } map {
+      _.getOrElse(throw new RuntimeException(s"Mongo is locked for ${mongoLock.lockId}"))
+    } map { r =>
+      Logger.info(s"mongo update completed")
+      r
     }
+  }
+
+  def removeDeletedTeams = {
+    mongoLock.tryLock {
+      Logger.info(s"Starting mongo clean up")
+      githubCompositeDataSource.removeDeletedTeams
+    } map {
+      _.getOrElse(throw new RuntimeException(s"Mongo is locked for ${mongoLock.lockId}"))
+    } map { r =>
+      Logger.info(s"mongo cleanup completed")
+      r
+    }
+
+  }
 
 
 }

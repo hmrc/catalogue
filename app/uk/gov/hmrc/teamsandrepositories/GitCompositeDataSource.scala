@@ -40,6 +40,7 @@ class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
                                        val mongoConnector: MongoConnector,
                                        val githubApiClientDecorator: GithubApiClientDecorator) {
 
+
   import BlockingIOExecutionContext._
 
   val gitApiEnterpriseClient: GithubApiClient =
@@ -66,6 +67,65 @@ class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
       }.toList
 
     }
+
+  //  def removeDeletedTeams: Future[List[String]] = {
+  //    Future.sequence(dataSources.map(_.removeDeletedTeams)).map(_.flatten)
+  //  }
+
+  def removeDeletedTeams: Future[Set[String]] = {
+
+    val collectedTeamNamesTuple: TeamNamesTuple = buildTeamNamesTuple()
+
+    //!@ refactor and match on TeamNameTuple
+    val orphanTeamsInMongo: Future[Set[String]] = (collectedTeamNamesTuple.ghNames, collectedTeamNamesTuple.mongoNames) match {
+      case (Some(ghTeamNames), Some(mongoTeamNames)) =>
+        val orphanTeams: Future[Set[String]] = for {
+          ghts <- ghTeamNames
+          mongots <- mongoTeamNames
+        } yield mongots.filterNot(ghts)
+        orphanTeams
+      case _ => throw new RuntimeException("no chance we get here!")
+    }
+
+    //    ret.foreach(println)
+    orphanTeamsInMongo.flatMap { (teamNames: Set[String]) =>
+      println(s"Deleting teams: $teamNames")
+      val ret = persister.deleteTeams(teamNames)
+
+      println(s"ret: $ret")
+      ret
+    }
+  }
+
+
+  def buildTeamNamesTuple(): TeamNamesTuple = {
+    val teamNamesTuples: Seq[TeamNamesTuple] = dataSources.map(_.getTeamsNamesFromBothSources)
+
+    teamNamesTuples.foldLeft(TeamNamesTuple()) { case (acc: TeamNamesTuple, teamNamesTuple: TeamNamesTuple) =>
+
+      //!@ extract?
+      val totalMongoNames: Option[Future[Set[String]]] = (acc.mongoNames, teamNamesTuple.mongoNames) match {
+        case (None, Some(mongoTeamNames)) =>
+          Some(mongoTeamNames)
+        case (Some(accMongoNames), Some(mongoTeamNames)) =>
+          Some(Future.sequence(Set(accMongoNames, mongoTeamNames)).map(_.flatten))
+        case _ => throw new RuntimeException("unable to collect totalMongoNames")
+
+      }
+
+      //!@ extract?
+      val totalGhNames = (acc.ghNames, teamNamesTuple.ghNames) match {
+        case (None, Some(ghTeamNames)) =>
+          Some(ghTeamNames)
+        case (Some(accGhNames), Some(mongoGhNames)) =>
+          Some(Future.sequence(Set(accGhNames, mongoGhNames)).map(_.flatten))
+        case _ => throw new RuntimeException("unable to collect totalGhNames")
+      }
+
+      TeamNamesTuple(totalGhNames, totalMongoNames)
+
+    }
+  }
 }
 
 @Singleton
