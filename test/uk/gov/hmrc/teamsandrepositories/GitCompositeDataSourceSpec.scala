@@ -146,9 +146,9 @@ class GitCompositeDataSourceSpec extends FunSpec with Matchers with MockitoSugar
       val dataSource1 = mock[GithubV3RepositoryDataSource]
       val dataSource2 = mock[GithubV3RepositoryDataSource]
 
-      when(dataSource1.getTeamsNamesFromBothSources).thenReturn(TeamNamesTuple(successful(Set("team-a")), successful(Set("team-a", "team-b"))))
+      when(dataSource1.getTeamsNamesFromMongo).thenReturn(TeamNamesTuple(successful(Set("team-a")), successful(Set("team-a", "team-b"))))
 
-      when(dataSource2.getTeamsNamesFromBothSources).thenReturn(TeamNamesTuple(successful(Set("team-c")), successful(Set("team-c", "team-d"))))
+      when(dataSource2.getTeamsNamesFromMongo).thenReturn(TeamNamesTuple(successful(Set("team-c")), successful(Set("team-c", "team-d"))))
 
       val compositeDataSource = buildCompositeDataSource(dataSource1, dataSource2)
 
@@ -162,13 +162,13 @@ class GitCompositeDataSourceSpec extends FunSpec with Matchers with MockitoSugar
       val dataSource1 = mock[GithubV3RepositoryDataSource]
       val dataSource2 = mock[GithubV3RepositoryDataSource]
 
-      when(dataSource1.getTeamsNamesFromBothSources).thenReturn(TeamNamesTuple(successful(Set("team-a")), successful(Set("team-a", "team-b"))))
-      when(dataSource2.getTeamsNamesFromBothSources).thenReturn(TeamNamesTuple(successful(Set("team-c")), successful(Set("team-c", "team-d"))))
+      when(dataSource1.getTeamsNamesFromMongo).thenReturn(TeamNamesTuple(successful(Set("team-a")), successful(Set("team-a", "team-b"))))
+      when(dataSource2.getTeamsNamesFromMongo).thenReturn(TeamNamesTuple(successful(Set("team-c")), successful(Set("team-c", "team-d"))))
 
       val compositeDataSource = buildCompositeDataSource(dataSource1, dataSource2)
 
       when(persister.deleteTeams(ArgumentMatchers.any())).thenReturn(Future.successful(Set("abc")))
-      compositeDataSource.removeDeletedTeams
+      compositeDataSource.removeOrphanTeamsFromMongo
 
       verify(persister, Mockito.timeout(1000)).deleteTeams(Set("team-b", "team-d"))
     }

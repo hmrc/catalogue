@@ -21,7 +21,7 @@ class DataReloadSchedulerSpec extends PlaySpec with MockitoSugar with Results wi
   val mockGitCompositeDataSource = mock[GitCompositeDataSource]
 
   when(mockGitCompositeDataSource.traverseDataSources).thenReturn(Future(Nil))
-  when(mockGitCompositeDataSource.removeDeletedTeams).thenReturn(Future(Set.empty[String]))
+  when(mockGitCompositeDataSource.removeOrphanTeamsFromMongo).thenReturn(Future(Set.empty[String]))
 
   when(mockCacheConfig.teamsCacheDuration).thenReturn(100 millisecond)
 
@@ -40,6 +40,6 @@ class DataReloadSchedulerSpec extends PlaySpec with MockitoSugar with Results wi
         mongoLock = testMongoLock)
 
     verify(mockGitCompositeDataSource, Mockito.timeout(500).atLeast(2)).traverseDataSources
-    verify(mockGitCompositeDataSource, Mockito.timeout(500).atLeast(2)).removeDeletedTeams
+    verify(mockGitCompositeDataSource, Mockito.timeout(500).atLeast(2)).removeOrphanTeamsFromMongo
   }
 }

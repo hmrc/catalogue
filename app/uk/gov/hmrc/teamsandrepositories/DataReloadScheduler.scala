@@ -24,9 +24,8 @@ class DataReloadScheduler @Inject()(actorSystem: ActorSystem,
   private val scheduledReload = actorSystem.scheduler.schedule(cacheDuration, cacheDuration) {
     Logger.info("Scheduled teams repository cache reload triggered")
     reload.andThen {
-      case Success(v) =>
-        removeDeletedTeams
-        v
+      case Success(teamRepositoriesFromGh: Seq[TeamRepositories]) =>
+        removeDeletedTeams(teamRepositoriesFromGh)
       case Failure(t) => throw new RuntimeException("Failed to reload and persist teams and repository data from gitub", t)
     }
   }
@@ -37,9 +36,7 @@ class DataReloadScheduler @Inject()(actorSystem: ActorSystem,
   def reload: Future[Seq[TeamRepositories]] = {
     mongoLock.tryLock {
       Logger.info(s"Starting mongo update")
-
-      val persistTeamRepoMapping: Future[Seq[TeamRepositories]] = githubCompositeDataSource.persistTeamRepoMapping
-
+      githubCompositeDataSource.persistTeamRepoMapping
     } map {
       _.getOrElse(throw new RuntimeException(s"Mongo is locked for ${mongoLock.lockId}"))
     } map { r =>
@@ -48,10 +45,11 @@ class DataReloadScheduler @Inject()(actorSystem: ActorSystem,
     }
   }
 
-  def removeDeletedTeams = {
+  def removeDeletedTeams(teamRepositoriesFromGh: Seq[TeamRepositories]) = {
+
     mongoLock.tryLock {
-      Logger.info(s"Starting mongo clean up")
-      githubCompositeDataSource.removeDeletedTeams
+      Logger.info(s"Starting mongo clean up to remove these deleted teams:[${teamRepositoriesFromGh.map(_.teamName)}]")
+      githubCompositeDataSource.removeOrphanTeamsFromMongo(teamRepositoriesFromGh)
     } map {
       _.getOrElse(throw new RuntimeException(s"Mongo is locked for ${mongoLock.lockId}"))
     } map { r =>

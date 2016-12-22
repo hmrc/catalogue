@@ -53,11 +53,11 @@ object GitRepository {
 
 case class TeamNamesTuple(ghNames: Option[Future[Set[String]]] = None, mongoNames: Option[Future[Set[String]]] = None)
 
-case object TeamNamesTuple {
-  def apply(ghName: Future[Set[String]], mongoNames: Future[Set[String]]): TeamNamesTuple =
-    TeamNamesTuple(Some(ghName), Some(mongoNames))
-
-}
+//case object TeamNamesTuple {
+//  def apply(ghName: Future[Set[String]], mongoNames: Future[Set[String]]): TeamNamesTuple =
+//    TeamNamesTuple(Some(ghName), Some(mongoNames))
+//
+//}
 
 @Singleton
 class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
@@ -120,12 +120,12 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
     }
 
 
-  def getTeamsNamesFromBothSources: TeamNamesTuple = {
+  def getTeamsNamesFromMongo: Future[Set[String]] = {
 
-    val teamNamesFromGh: Future[Set[String]] = gh.getOrganisations.flatMap { orgs: Seq[GhOrganisation] =>
-      val teams: Seq[Future[Seq[String]]] = orgs.map(org => gh.getTeamsForOrganisation(org.login).map((x: Seq[GhTeam]) => x.map(_.name)))
-      Future.sequence(teams).map(_.flatten.toSet.filter(ts => !githubConfig.hiddenTeams.contains(ts)))
-    }
+//    val teamNamesFromGh: Future[Set[String]] = gh.getOrganisations.flatMap { orgs: Seq[GhOrganisation] =>
+//      val teams: Seq[Future[Seq[String]]] = orgs.map(org => gh.getTeamsForOrganisation(org.login).map((x: Seq[GhTeam]) => x.map(_.name)))
+//      Future.sequence(teams).map(_.flatten.toSet.filter(ts => !githubConfig.hiddenTeams.contains(ts)))
+//    }
 
     val teamNamesFromMongo: Future[Set[String]] = {
       persister.getAllTeamAndRepos.map { case (allPersistedTeamAndRepositories, _) =>
@@ -133,7 +133,7 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
       }
     }
 
-    TeamNamesTuple(teamNamesFromGh, teamNamesFromMongo)
+    teamNamesFromMongo
 
   }
 
