@@ -45,14 +45,14 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
   val ec = BlockingIOExecutionContext.executionContext
 
   class StubTeamsAndReposPersister extends TeamsAndReposPersister(mock[MongoTeamsAndRepositoriesPersister], mock[MongoUpdateTimePersister]) {
-    var captor: List[PersistedTeamAndRepositories] = Nil
+    var captor: List[TeamRepositories] = Nil
 
-    override def update(teamsAndRepositories: PersistedTeamAndRepositories): Future[PersistedTeamAndRepositories] = {
+    override def update(teamsAndRepositories: TeamRepositories): Future[TeamRepositories] = {
       captor +:= teamsAndRepositories
       Future(teamsAndRepositories)(ec)
     }
 
-    override def getAllTeamAndRepos: Future[(Seq[PersistedTeamAndRepositories], Option[LocalDateTime])] =
+    override def getAllTeamAndRepos: Future[(Seq[TeamRepositories], Option[LocalDateTime])] =
       Future.successful((Nil, None))
   }
 
@@ -85,10 +85,10 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
 
       eventualPersistedTeamAndRepositorieses.futureValue shouldBe List(
-        PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now))),
-        PersistedTeamAndRepositories("B", List(GitRepository("B_r", "some description", "url_B", now, now))),
-        PersistedTeamAndRepositories("C", List(GitRepository("C_r", "some description", "url_C", now, now))),
-        PersistedTeamAndRepositories("D", List()))
+        TeamRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now))),
+        TeamRepositories("B", List(GitRepository("B_r", "some description", "url_B", now, now))),
+        TeamRepositories("C", List(GitRepository("C_r", "some description", "url_C", now, now))),
+        TeamRepositories("D", List()))
     }
 
 //    "Return a list of teams and repositories, filtering out forks" in {
@@ -137,10 +137,10 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
 
       internalDataSource.persistTeamsAndReposMapping().futureValue shouldBe List(
-        PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, isInternal = true))),
-        PersistedTeamAndRepositories("B", List(GitRepository("B_r", "some description", "url_B", now, now, isInternal = true))),
-        PersistedTeamAndRepositories("C", List(GitRepository("C_r", "some description", "url_C", now, now, isInternal = true))),
-        PersistedTeamAndRepositories("D", List()))
+        TeamRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, isInternal = true))),
+        TeamRepositories("B", List(GitRepository("B_r", "some description", "url_B", now, now, isInternal = true))),
+        TeamRepositories("C", List(GitRepository("C_r", "some description", "url_C", now, now, isInternal = true))),
+        TeamRepositories("D", List()))
     }
 
     "Filter out repositories according to the hidden config" in {
@@ -158,9 +158,9 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
       when(githubClient.repoContainsContent(anyString(), anyString(), anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
 
       dataSource.persistTeamsAndReposMapping().futureValue shouldBe List(
-        PersistedTeamAndRepositories("A", List(GitRepository("A_r2", "some description", "url_A2", now, now))),
-        PersistedTeamAndRepositories("C", List()),
-        PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now))))
+        TeamRepositories("A", List(GitRepository("A_r2", "some description", "url_A2", now, now))),
+        TeamRepositories("C", List()),
+        TeamRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now))))
     }
 
 
@@ -180,7 +180,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
       val persister = new StubTeamsAndReposPersister
 
       dataSource.persistTeamsAndReposMapping().futureValue shouldBe List(
-        PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now))))
+        TeamRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now))))
     }
 
     "Set repoType Service if the repository contains an app/application.conf folder" in {
@@ -200,8 +200,8 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
       val persister = new StubTeamsAndReposPersister
 
       dataSource.persistTeamsAndReposMapping().futureValue shouldBe List(
-        PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Deployable))),
-        PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now))))
+        TeamRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Deployable))),
+        TeamRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now))))
     }
 
     "Set repoType Service if the repository contains a Procfile" in {
@@ -220,8 +220,8 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
       val persister = new StubTeamsAndReposPersister
 
       dataSource.persistTeamsAndReposMapping().futureValue shouldBe List(
-        PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Deployable))),
-        PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Other))))
+        TeamRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Deployable))),
+        TeamRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Other))))
     }
 
 
@@ -242,7 +242,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
       val persister = new StubTeamsAndReposPersister
 
-      dataSource.persistTeamsAndReposMapping().futureValue should contain(PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Deployable))))
+      dataSource.persistTeamsAndReposMapping().futureValue should contain(TeamRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Deployable))))
     }
 
     "Set type Library if not Service and has src/main/scala and has tags" in {
@@ -266,11 +266,11 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
       val persister = new StubTeamsAndReposPersister
 
-      val repositories: Seq[PersistedTeamAndRepositories] = dataSource.persistTeamsAndReposMapping().futureValue
+      val repositories: Seq[TeamRepositories] = dataSource.persistTeamsAndReposMapping().futureValue
 
-      repositories should contain(PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Library))))
+      repositories should contain(TeamRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Library))))
 
-      repositories should contain(PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Other))))
+      repositories should contain(TeamRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Other))))
     }
 
 
@@ -297,9 +297,9 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
       val repositories = dataSource.persistTeamsAndReposMapping().futureValue
 
-      repositories should contain(PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Library))))
+      repositories should contain(TeamRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Library))))
 
-      repositories should contain(PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Other))))
+      repositories should contain(TeamRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Other))))
     }
 
 
@@ -324,9 +324,9 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
       val repositories = dataSource.persistTeamsAndReposMapping().futureValue
 
-      repositories should contain(PersistedTeamAndRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Other))))
+      repositories should contain(TeamRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Other))))
 
-      repositories should contain(PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Other))))
+      repositories should contain(TeamRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Other))))
     }
 
 
@@ -371,7 +371,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
       val persister = new StubTeamsAndReposPersister
 
       dataSource.persistTeamsAndReposMapping().futureValue(Timeout(1 minute)) shouldBe List(
-        PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now))))
+        TeamRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now))))
     }
 
   }

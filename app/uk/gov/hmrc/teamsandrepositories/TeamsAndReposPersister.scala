@@ -30,10 +30,12 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
 
-case class PersistedTeamAndRepositories(teamName: String,
-                                        repositories: List[GitRepository])
+case class TeamRepositories(teamName: String,
+                            repositories: List[GitRepository]) {
+  def repositoriesByType(repoType: RepoType.RepoType) = repositories.filter(_.repoType == repoType)
+}
 
-object PersistedTeamAndRepositories {
+object TeamRepositories {
   implicit val localDateTimeRead: Reads[LocalDateTime] =
     __.read[Long].map { dateTime => LocalDateTime.ofEpochSecond(dateTime, 0, ZoneOffset.UTC) }
 
@@ -41,7 +43,7 @@ object PersistedTeamAndRepositories {
     def writes(dateTime: LocalDateTime): JsValue = JsNumber(value = dateTime.atOffset(ZoneOffset.UTC).toEpochSecond)
   }
 
-  implicit val formats = Json.format[PersistedTeamAndRepositories]
+  implicit val formats = Json.format[TeamRepositories]
 
 }
 
@@ -50,11 +52,11 @@ class TeamsAndReposPersister @Inject()(mongoTeamsAndReposPersister: MongoTeamsAn
   val teamsAndRepositoriesTimestampKeyName = "teamsAndRepositories.updated"
 
 
-  def update(teamsAndRepositories: PersistedTeamAndRepositories): Future[PersistedTeamAndRepositories] = {
+  def update(teamsAndRepositories: TeamRepositories): Future[TeamRepositories] = {
     mongoTeamsAndReposPersister.update(teamsAndRepositories)
   }
 
-  def getAllTeamAndRepos: Future[(Seq[PersistedTeamAndRepositories], Option[LocalDateTime])] = {
+  def getAllTeamAndRepos: Future[(Seq[TeamRepositories], Option[LocalDateTime])] = {
     for {
       teamsAndRepos <- mongoTeamsAndReposPersister.getAllTeamAndRepos
       timestamp <- mongoUpdateTimePersister.get(teamsAndRepositoriesTimestampKeyName)
@@ -78,10 +80,10 @@ class TeamsAndReposPersister @Inject()(mongoTeamsAndReposPersister: MongoTeamsAn
 
 @Singleton
 class MongoTeamsAndRepositoriesPersister @Inject()(mongoConnector: MongoConnector)
-  extends ReactiveRepository[PersistedTeamAndRepositories, BSONObjectID](
+  extends ReactiveRepository[TeamRepositories, BSONObjectID](
     collectionName = "teamsAndRepositories",
     mongo = mongoConnector.db,
-    domainFormat = PersistedTeamAndRepositories.formats) {
+    domainFormat = TeamRepositories.formats) {
 
 
   override def ensureIndexes(implicit ec: ExecutionContext): Future[Seq[Boolean]] =
@@ -92,7 +94,7 @@ class MongoTeamsAndRepositoriesPersister @Inject()(mongoConnector: MongoConnecto
     )
 
 
-  def update(teamAndRepos: PersistedTeamAndRepositories): Future[PersistedTeamAndRepositories] = {
+  def update(teamAndRepos: TeamRepositories): Future[TeamRepositories] = {
 
     withTimerAndCounter("mongo.update") {
       for {
@@ -104,7 +106,7 @@ class MongoTeamsAndRepositoriesPersister @Inject()(mongoConnector: MongoConnecto
     }
   }
 
-  def add(teamsAndRepository: PersistedTeamAndRepositories): Future[Boolean] = {
+  def add(teamsAndRepository: TeamRepositories): Future[Boolean] = {
     withTimerAndCounter("mongo.write") {
       insert(teamsAndRepository) map {
         case lastError if lastError.inError => throw lastError
@@ -113,7 +115,7 @@ class MongoTeamsAndRepositoriesPersister @Inject()(mongoConnector: MongoConnecto
     }
   }
 
-  def getAllTeamAndRepos: Future[List[PersistedTeamAndRepositories]] = findAll()
+  def getAllTeamAndRepos: Future[List[TeamRepositories]] = findAll()
 
   def clearAllData: Future[Boolean] = super.removeAll().map(!_.hasErrors)
 

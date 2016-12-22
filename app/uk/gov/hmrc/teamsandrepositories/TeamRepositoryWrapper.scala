@@ -31,7 +31,7 @@ object TeamRepositoryWrapper {
 
   private case class RepositoriesToTeam(repositories: Seq[GitRepository], teamName: String)
 
-  implicit class TeamRepositoryWrapper(teamRepos: Seq[PersistedTeamAndRepositories]) {
+  implicit class TeamRepositoryWrapper(teamRepos: Seq[TeamRepositories]) {
 
     def asTeamList(repositoriesToIgnore: List[String]): Seq[Team] =
       teamRepos.map(_.teamName).map { tn =>
@@ -162,7 +162,7 @@ object TeamRepositoryWrapper {
 
     }
 
-    private def repositoryTeams(data: Seq[PersistedTeamAndRepositories]): Seq[RepositoriesToTeam] =
+    private def repositoryTeams(data: Seq[TeamRepositories]): Seq[RepositoriesToTeam] =
       for {
         teamAndRepositories <- data
         repositories <- teamAndRepositories.repositories.groupBy(_.name).values

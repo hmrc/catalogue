@@ -6,6 +6,7 @@ import play.Logger
 import play.api.inject.ApplicationLifecycle
 import uk.gov.hmrc.teamsandrepositories.config.CacheConfig
 
+import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
@@ -33,11 +34,12 @@ class DataReloadScheduler @Inject()(actorSystem: ActorSystem,
   applicationLifecycle.addStopHook(() => Future(scheduledReload.cancel()))
 
   //!@ extract a function and reduce duplication
-  def reload: Future[Seq[PersistedTeamAndRepositories]] = {
+  def reload: Future[Seq[TeamRepositories]] = {
     mongoLock.tryLock {
       Logger.info(s"Starting mongo update")
 
-      githubCompositeDataSource.traverseDataSources
+      val persistTeamRepoMapping: Future[Seq[TeamRepositories]] = githubCompositeDataSource.persistTeamRepoMapping
+
     } map {
       _.getOrElse(throw new RuntimeException(s"Mongo is locked for ${mongoLock.lockId}"))
     } map { r =>

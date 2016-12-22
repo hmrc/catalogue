@@ -33,9 +33,9 @@ import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 
-case class TeamRepositories(teamName: String, repositories: List[GitRepository]) {
-  def repositoriesByType(repoType: RepoType.RepoType) = repositories.filter(_.repoType == repoType)
-}
+//case class TeamRepositories(teamName: String, repositories: List[GitRepository]) {
+//  def repositoriesByType(repoType: RepoType.RepoType) = repositories.filter(_.repoType == repoType)
+//}
 
 
 case class GitRepository(name: String,
@@ -75,7 +75,8 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
   val retries: Int = 5
   val initialDuration: Double = 50
 
-  def persistTeamsAndReposMapping(): Future[Seq[PersistedTeamAndRepositories]] = {
+  //!@ remove once done
+  def persistTeamsAndReposMapping(): Future[Seq[TeamRepositories]] = {
     exponentialRetry(retries, initialDuration) {
       gh.getOrganisations.flatMap { (orgs: Seq[GhOrganisation]) =>
         Future.sequence(orgs.map(org => traverseOrganisation(org))).map {
@@ -87,6 +88,36 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
       case Success(_) => persister.updateTimestamp(LocalDateTime.now())
     }
   }
+
+  def getTeamRepoMapping: Future[Seq[TeamRepositories]] =
+    exponentialRetry(retries, initialDuration) {
+      gh.getOrganisations.flatMap { orgs =>
+        Future.sequence(orgs.map(mapOrganisation)).map {
+          _.flatten
+        }
+      }
+    }
+
+  def mapOrganisation(organisation: GhOrganisation): Future[List[TeamRepositories]] =
+    exponentialRetry(retries, initialDuration) {
+      gh.getTeamsForOrganisation(organisation.login).flatMap { teams =>
+        Future.sequence(for {
+          team <- teams; if !githubConfig.hiddenTeams.contains(team.name)
+        } yield mapTeam(organisation, team))
+      }
+    }
+
+
+  def mapTeam(organisation: GhOrganisation, team: GhTeam): Future[TeamRepositories] =
+    exponentialRetry(retries, initialDuration) {
+      gh.getReposForTeam(team.id).flatMap { repos =>
+        Future.sequence(for {
+          repo <- repos; if !repo.fork && !githubConfig.hiddenRepositories.contains(repo.name)
+        } yield mapRepository(organisation, repo)).map { (repos: List[GitRepository]) =>
+          TeamRepositories(team.name, repositories = repos)
+        }
+      }
+    }
 
 
   def getTeamsNamesFromBothSources: TeamNamesTuple = {
@@ -107,12 +138,12 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
   }
 
 
-  private def traverseOrganisation(organisation: GhOrganisation): Future[List[PersistedTeamAndRepositories]] = {
+  private def traverseOrganisation(organisation: GhOrganisation): Future[List[TeamRepositories]] = {
     exponentialRetry(retries, initialDuration) {
       for {
         teamsFromGh <- gh.getTeamsForOrganisation(organisation.login)
-        persistedTeams: Seq[PersistedTeamAndRepositories] <- persistGhTeams(organisation, teamsFromGh)
-      } yield persistedTeams
+        persistedTeams: Seq[TeamRepositories] <- persistGhTeams(organisation, teamsFromGh)
+      } yield persistedTeams.toList
     }
   }
 
@@ -123,14 +154,14 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
       } yield persistTeam(organisation, team))
   }
 
-  private def persistTeam(organisation: GhOrganisation, team: GhTeam): Future[PersistedTeamAndRepositories] =
+  private def persistTeam(organisation: GhOrganisation, team: GhTeam): Future[TeamRepositories] =
     exponentialRetry(retries, initialDuration) {
       val reposForTeam = gh.getReposForTeam(team.id)
       reposForTeam.flatMap { repos =>
         val gitRepositoriesForTeam = Future.sequence(for {
           repo <- repos if !repo.fork && !githubConfig.hiddenRepositories.contains(repo.name)
         } yield mapRepository(organisation, repo))
-        gitRepositoriesForTeam.flatMap(rs => persister.update(PersistedTeamAndRepositories(team.name, rs)))
+        gitRepositoriesForTeam.flatMap(rs => persister.update(TeamRepositories(team.name, rs)))
       }
     }
 

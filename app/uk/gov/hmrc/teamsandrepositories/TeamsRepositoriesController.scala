@@ -187,14 +187,14 @@ class TeamsRepositoriesController @Inject()(dataReloadScheduler: DataReloadSched
     dateTime.fold("Not Available")(format)
   }
 
-  private def determineServicesResponse(request: Request[AnyContent], data: Seq[PersistedTeamAndRepositories]): JsValue =
+  private def determineServicesResponse(request: Request[AnyContent], data: Seq[TeamRepositories]): JsValue =
     if (request.getQueryString("details").nonEmpty)
       Json.toJson(data.asRepositoryDetailsList(RepoType.Deployable, urlTemplatesProvider.ciUrlTemplates))
     else if (request.getQueryString("teamDetails").nonEmpty)
       Json.toJson(data.asRepositoryToTeamNameList())
     else Json.toJson(data.asServiceRepositoryList)
 
-  private def determineLibrariesResponse(request: Request[AnyContent], data: Seq[PersistedTeamAndRepositories]) = {
+  private def determineLibrariesResponse(request: Request[AnyContent], data: Seq[TeamRepositories]) = {
     if (request.getQueryString("details").nonEmpty)
       Json.toJson(data.asRepositoryDetailsList(RepoType.Library, urlTemplatesProvider.ciUrlTemplates))
     else

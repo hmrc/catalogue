@@ -1,12 +1,15 @@
 package uk.gov.hmrc.teamsandrepositories
 
+import java.time.LocalDateTime
+
 import com.google.inject.{Inject, Singleton}
-import play.api.Logger
+import play.Logger
 import uk.gov.hmrc.githubclient.GithubApiClient
 import uk.gov.hmrc.teamsandrepositories.config.GithubConfig
 
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 
 ////!@ test this
@@ -58,16 +61,32 @@ class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
   val dataSources = List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)
 
 
-  def traverseDataSources: Future[Seq[PersistedTeamAndRepositories]] =
+  //!@ remove this once done
+  def traverseDataSources: Future[Seq[TeamRepositories]] =
     Future.sequence(dataSources.map(_.persistTeamsAndReposMapping())).map { results =>
       val flattened = results.flatten
       Logger.info(s"Combining ${flattened.length} results from ${dataSources.length} sources")
       flattened.groupBy(_.teamName).map { case (name, teams) =>
-        PersistedTeamAndRepositories(name, teams.flatMap(t => t.repositories).sortBy(_.name))
+        TeamRepositories(name, teams.flatMap(t => t.repositories).sortBy(_.name))
       }.toList
 
     }
 
+
+  def persistTeamRepoMapping: Future[Seq[TeamRepositories]] =  {
+
+    Future.sequence(dataSources.map(_.getTeamRepoMapping)).map { results =>
+      val flattened: List[TeamRepositories] = results.flatten
+
+      Logger.info(s"Combining ${flattened.length} results from ${dataSources.length} sources")
+      Future.sequence(flattened.groupBy(_.teamName).map { case (name, teams) =>
+        TeamRepositories(name, teams.flatMap(t => t.repositories).sortBy(_.name))
+      }.toList.map(tr => persister.update(tr)))
+    }.flatMap(identity).andThen {
+      case Failure(t) => throw t
+      case Success(_) => persister.updateTimestamp(LocalDateTime.now())
+    }
+  }
 
   def removeDeletedTeams: Future[Set[String]] = {
 

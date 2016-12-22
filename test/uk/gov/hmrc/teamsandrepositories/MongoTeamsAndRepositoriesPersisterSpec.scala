@@ -35,16 +35,16 @@ class MongoTeamsAndRepositoriesPersisterSpec extends UnitSpec with LoneElement w
       val gitRepository3 = GitRepository("repo-name3", "Desc3", "url3", 1, 2, false, RepoType.Deployable)
       val gitRepository4 = GitRepository("repo-name4", "Desc4", "url4", 3, 4, true, RepoType.Library)
 
-      val teamAndRepositories1 = PersistedTeamAndRepositories("test-team1", List(gitRepository1, gitRepository2))
-      val teamAndRepositories2 = PersistedTeamAndRepositories("test-team2", List(gitRepository3, gitRepository4))
+      val teamAndRepositories1 = TeamRepositories("test-team1", List(gitRepository1, gitRepository2))
+      val teamAndRepositories2 = TeamRepositories("test-team2", List(gitRepository3, gitRepository4))
       await(mongoTeamsAndReposPersister.add(teamAndRepositories1))
       await(mongoTeamsAndReposPersister.add(teamAndRepositories2))
 
       val all = await(mongoTeamsAndReposPersister.getAllTeamAndRepos)
 
       all.size shouldBe 2
-      val result1: PersistedTeamAndRepositories = all(0)
-      val result2: PersistedTeamAndRepositories = all(1)
+      val result1: TeamRepositories = all(0)
+      val result2: TeamRepositories = all(1)
 
       result1.teamName shouldBe "test-team1"
       result2.teamName shouldBe "test-team2"
@@ -68,15 +68,15 @@ class MongoTeamsAndRepositoriesPersisterSpec extends UnitSpec with LoneElement w
       val gitRepository1 = GitRepository("repo-name1", "Desc1", "url1", 1, 2, false, RepoType.Deployable)
       val gitRepository2 = GitRepository("repo-name2", "Desc2", "url2", 3, 4, true, RepoType.Library)
 
-      val teamAndRepositories1 = PersistedTeamAndRepositories("test-team",  List(gitRepository1))
+      val teamAndRepositories1 = TeamRepositories("test-team",  List(gitRepository1))
       await(mongoTeamsAndReposPersister.add(teamAndRepositories1))
 
-      val teamAndRepositories2 = PersistedTeamAndRepositories("test-team", List(gitRepository2))
+      val teamAndRepositories2 = TeamRepositories("test-team", List(gitRepository2))
       await(mongoTeamsAndReposPersister.update(teamAndRepositories2))
 
       val allUpdated = await(mongoTeamsAndReposPersister.getAllTeamAndRepos)
       allUpdated.size shouldBe 1
-      val updatedDeployment: PersistedTeamAndRepositories = allUpdated.loneElement
+      val updatedDeployment: TeamRepositories = allUpdated.loneElement
 
       updatedDeployment.teamName shouldBe "test-team"
       updatedDeployment.repositories shouldBe List(gitRepository2)
@@ -93,9 +93,9 @@ class MongoTeamsAndRepositoriesPersisterSpec extends UnitSpec with LoneElement w
       val gitRepository3 = GitRepository("repo-name3", "Desc3", "url3", 1, 2, false, RepoType.Deployable)
       val gitRepository4 = GitRepository("repo-name4", "Desc4", "url4", 3, 4, true, RepoType.Library)
 
-      val teamAndRepositories1 = PersistedTeamAndRepositories("test-team1", List(gitRepository1, gitRepository2))
-      val teamAndRepositories2 = PersistedTeamAndRepositories("test-team2", List(gitRepository3, gitRepository4))
-      val teamAndRepositories3 = PersistedTeamAndRepositories("test-team3", List(gitRepository1))
+      val teamAndRepositories1 = TeamRepositories("test-team1", List(gitRepository1, gitRepository2))
+      val teamAndRepositories2 = TeamRepositories("test-team2", List(gitRepository3, gitRepository4))
+      val teamAndRepositories3 = TeamRepositories("test-team3", List(gitRepository1))
 
       await(mongoTeamsAndReposPersister.add(teamAndRepositories1))
       await(mongoTeamsAndReposPersister.add(teamAndRepositories2))
