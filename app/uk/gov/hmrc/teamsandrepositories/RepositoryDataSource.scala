@@ -75,19 +75,19 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
   val retries: Int = 5
   val initialDuration: Double = 50
 
-  //!@ remove once done
-  def persistTeamsAndReposMapping(): Future[Seq[TeamRepositories]] = {
-    exponentialRetry(retries, initialDuration) {
-      gh.getOrganisations.flatMap { (orgs: Seq[GhOrganisation]) =>
-        Future.sequence(orgs.map(org => traverseOrganisation(org))).map {
-          _.flatten
-        }
-      }
-    }.andThen {
-      case Failure(t) => throw t
-      case Success(_) => persister.updateTimestamp(LocalDateTime.now())
-    }
-  }
+//  //!@ remove once done
+//  def persistTeamsAndReposMapping(): Future[Seq[TeamRepositories]] = {
+//    exponentialRetry(retries, initialDuration) {
+//      gh.getOrganisations.flatMap { (orgs: Seq[GhOrganisation]) =>
+//        Future.sequence(orgs.map(org => traverseOrganisation(org))).map {
+//          _.flatten
+//        }
+//      }
+//    }.andThen {
+//      case Failure(t) => throw t
+//      case Success(_) => persister.updateTimestamp(LocalDateTime.now())
+//    }
+//  }
 
   def getTeamRepoMapping: Future[Seq[TeamRepositories]] =
     exponentialRetry(retries, initialDuration) {
@@ -120,22 +120,17 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
     }
 
 
-  def getTeamsNamesFromMongo: Future[Set[String]] = {
-
-//    val teamNamesFromGh: Future[Set[String]] = gh.getOrganisations.flatMap { orgs: Seq[GhOrganisation] =>
-//      val teams: Seq[Future[Seq[String]]] = orgs.map(org => gh.getTeamsForOrganisation(org.login).map((x: Seq[GhTeam]) => x.map(_.name)))
-//      Future.sequence(teams).map(_.flatten.toSet.filter(ts => !githubConfig.hiddenTeams.contains(ts)))
+//  def getTeamsNamesFromMongo: Future[Set[String]] = {
+//
+//    val teamNamesFromMongo: Future[Set[String]] = {
+//      persister.getAllTeamAndRepos.map { case (allPersistedTeamAndRepositories, _) =>
+//        allPersistedTeamAndRepositories.map(_.teamName).toSet
+//      }
 //    }
-
-    val teamNamesFromMongo: Future[Set[String]] = {
-      persister.getAllTeamAndRepos.map { case (allPersistedTeamAndRepositories, _) =>
-        allPersistedTeamAndRepositories.map(_.teamName).toSet
-      }
-    }
-
-    teamNamesFromMongo
-
-  }
+//
+//    teamNamesFromMongo
+//
+//  }
 
 
   private def traverseOrganisation(organisation: GhOrganisation): Future[List[TeamRepositories]] = {

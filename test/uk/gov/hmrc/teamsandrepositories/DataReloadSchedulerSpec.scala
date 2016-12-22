@@ -1,6 +1,7 @@
 package uk.gov.hmrc.teamsandrepositories
 
-import org.mockito.Mockito
+import org.mockito.ArgumentMatchers.any
+import org.mockito.{ArgumentMatchers, Mockito}
 import org.mockito.Mockito._
 import org.scalatest.OptionValues
 import org.scalatest.concurrent.Eventually
@@ -9,8 +10,8 @@ import org.scalatestplus.play.{OneServerPerSuite, PlaySpec}
 import play.api.inject.ApplicationLifecycle
 import play.api.mvc.Results
 import uk.gov.hmrc.teamsandrepositories.config.CacheConfig
-import scala.concurrent.duration._
 
+import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -20,8 +21,8 @@ class DataReloadSchedulerSpec extends PlaySpec with MockitoSugar with Results wi
   val mockCacheConfig = mock[CacheConfig]
   val mockGitCompositeDataSource = mock[GitCompositeDataSource]
 
-  when(mockGitCompositeDataSource.traverseDataSources).thenReturn(Future(Nil))
-  when(mockGitCompositeDataSource.removeOrphanTeamsFromMongo).thenReturn(Future(Set.empty[String]))
+  when(mockGitCompositeDataSource.persistTeamRepoMapping).thenReturn(Future(Nil))
+  when(mockGitCompositeDataSource.removeOrphanTeamsFromMongo(any())).thenReturn(Future(Set.empty[String]))
 
   when(mockCacheConfig.teamsCacheDuration).thenReturn(100 millisecond)
 
@@ -39,7 +40,7 @@ class DataReloadSchedulerSpec extends PlaySpec with MockitoSugar with Results wi
         cacheConfig = mockCacheConfig,
         mongoLock = testMongoLock)
 
-    verify(mockGitCompositeDataSource, Mockito.timeout(500).atLeast(2)).traverseDataSources
-    verify(mockGitCompositeDataSource, Mockito.timeout(500).atLeast(2)).removeOrphanTeamsFromMongo
+    verify(mockGitCompositeDataSource, Mockito.timeout(500).atLeast(2)).persistTeamRepoMapping
+    verify(mockGitCompositeDataSource, Mockito.timeout(500).atLeast(2)).removeOrphanTeamsFromMongo(any())
   }
 }

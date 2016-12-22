@@ -19,7 +19,10 @@ package uk.gov.hmrc.teamsandrepositories
 import java.time.LocalDateTime
 import java.util.Date
 
+import org.mockito.ArgumentMatchers
 import org.mockito.Mockito._
+import org.mockito.invocation.InvocationOnMock
+import org.mockito.stubbing.Answer
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
@@ -47,13 +50,13 @@ class CompositeRepositoryDataSourceSpec extends WordSpec with MockitoSugar with 
         TeamRepositories("F", List(GitRepository("F_r", "Some Description", "url_F", now, now))))
 
       val dataSource1 = mock[GithubV3RepositoryDataSource]
-      when(dataSource1.persistTeamsAndReposMapping).thenReturn(Future.successful(teamsList1))
+      when(dataSource1.getTeamRepoMapping).thenReturn(Future.successful(teamsList1))
 
       val dataSource2 = mock[GithubV3RepositoryDataSource]
-      when(dataSource2.persistTeamsAndReposMapping).thenReturn(Future.successful(teamsList2))
+      when(dataSource2.getTeamRepoMapping).thenReturn(Future.successful(teamsList2))
 
       val compositeDataSource = buildCompositeDataSource(dataSource1, dataSource2)
-      val result = compositeDataSource.traverseDataSources.futureValue
+      val result = compositeDataSource.persistTeamRepoMapping.futureValue
 
       result.length shouldBe 6
       result should contain(teamsList1.head)
@@ -80,14 +83,14 @@ class CompositeRepositoryDataSourceSpec extends WordSpec with MockitoSugar with 
         TeamRepositories("D", List(GitRepository("D_r", "Some Description", "url_D", now, now))))
 
       val dataSource1 = mock[GithubV3RepositoryDataSource]
-      when(dataSource1.persistTeamsAndReposMapping()).thenReturn(Future.successful(teamsList1))
+      when(dataSource1.getTeamRepoMapping).thenReturn(Future.successful(teamsList1))
 
       val dataSource2 = mock[GithubV3RepositoryDataSource]
-      when(dataSource2.persistTeamsAndReposMapping()).thenReturn(Future.successful(teamsList2))
+      when(dataSource2.getTeamRepoMapping).thenReturn(Future.successful(teamsList2))
 
       val compositeDataSource = buildCompositeDataSource(dataSource1, dataSource2)
 
-      val result = compositeDataSource.traverseDataSources.futureValue
+      val result = compositeDataSource.persistTeamRepoMapping.futureValue
 
       result.length shouldBe 4
       result.find(_.teamName == "A").get.repositories should contain inOrderOnly(
@@ -100,7 +103,8 @@ class CompositeRepositoryDataSourceSpec extends WordSpec with MockitoSugar with 
     }
   }
 
-  private def buildCompositeDataSource(dataSource1: GithubV3RepositoryDataSource, dataSource2: GithubV3RepositoryDataSource) = {
+  private def buildCompositeDataSource(dataSource1: GithubV3RepositoryDataSource,
+                                       dataSource2: GithubV3RepositoryDataSource) = {
 
     val githubConfig = mock[GithubConfig]
     val persister = mock[TeamsAndReposPersister]
@@ -125,9 +129,18 @@ class CompositeRepositoryDataSourceSpec extends WordSpec with MockitoSugar with 
 
     val enterpriseGithubClient = mock[GithubApiClient]
     val openGithubClient = mock[GithubApiClient]
+
     when(githubClientDecorator.githubApiClient(enterpriseUrl, enterpriseKey)).thenReturn(enterpriseGithubClient)
     when(githubClientDecorator.githubApiClient(openUrl, openKey)).thenReturn(openGithubClient)
 
+    val repositories: Seq[TeamRepositories] = Seq(TeamRepositories("testTeam", Nil))
+    when(persister.update(ArgumentMatchers.any())).thenAnswer(new Answer[Future[TeamRepositories]] {
+      override def answer(invocation: InvocationOnMock): Future[TeamRepositories] = {
+        val args = invocation.getArguments()
+        Future.successful(args(0).asInstanceOf[TeamRepositories])
+      }
+    })
+    when(persister.updateTimestamp(ArgumentMatchers.any())).thenReturn(Future.successful(true))
 
     new GitCompositeDataSource(githubConfig, persister, connector, githubClientDecorator) {
       override val dataSources: List[GithubV3RepositoryDataSource] = List(dataSource1, dataSource2)

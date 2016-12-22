@@ -81,7 +81,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
 
 
-      val eventualPersistedTeamAndRepositorieses = dataSource.persistTeamsAndReposMapping()
+      val eventualPersistedTeamAndRepositorieses = dataSource.getTeamRepoMapping
 
 
       eventualPersistedTeamAndRepositorieses.futureValue shouldBe List(
@@ -108,7 +108,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 //
 //
 //
-//      val eventualPersistedTeamAndRepositorieses = dataSource.persistTeamsAndReposMapping()
+//      val eventualPersistedTeamAndRepositorieses = dataSource.getTeamRepoMapping
 //
 //
 //      eventualPersistedTeamAndRepositorieses.futureValue shouldBe List(
@@ -136,7 +136,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
       when(githubClient.repoContainsContent(anyString(), anyString(), anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
 
 
-      internalDataSource.persistTeamsAndReposMapping().futureValue shouldBe List(
+      internalDataSource.getTeamRepoMapping.futureValue shouldBe List(
         TeamRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, isInternal = true))),
         TeamRepositories("B", List(GitRepository("B_r", "some description", "url_B", now, now, isInternal = true))),
         TeamRepositories("C", List(GitRepository("C_r", "some description", "url_C", now, now, isInternal = true))),
@@ -157,7 +157,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
       when(githubClient.getReposForTeam(4)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("D_r", "some description", 4, "url_D", false, now, now))))
       when(githubClient.repoContainsContent(anyString(), anyString(), anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
 
-      dataSource.persistTeamsAndReposMapping().futureValue shouldBe List(
+      dataSource.getTeamRepoMapping.futureValue shouldBe List(
         TeamRepositories("A", List(GitRepository("A_r2", "some description", "url_A2", now, now))),
         TeamRepositories("C", List()),
         TeamRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now))))
@@ -179,7 +179,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
       val persister = new StubTeamsAndReposPersister
 
-      dataSource.persistTeamsAndReposMapping().futureValue shouldBe List(
+      dataSource.getTeamRepoMapping.futureValue shouldBe List(
         TeamRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now))))
     }
 
@@ -199,7 +199,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
       val persister = new StubTeamsAndReposPersister
 
-      dataSource.persistTeamsAndReposMapping().futureValue shouldBe List(
+      dataSource.getTeamRepoMapping.futureValue shouldBe List(
         TeamRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Deployable))),
         TeamRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now))))
     }
@@ -219,7 +219,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
       val persister = new StubTeamsAndReposPersister
 
-      dataSource.persistTeamsAndReposMapping().futureValue shouldBe List(
+      dataSource.getTeamRepoMapping.futureValue shouldBe List(
         TeamRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now, repoType = RepoType.Deployable))),
         TeamRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Other))))
     }
@@ -242,7 +242,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
       val persister = new StubTeamsAndReposPersister
 
-      dataSource.persistTeamsAndReposMapping().futureValue should contain(TeamRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Deployable))))
+      dataSource.getTeamRepoMapping.futureValue should contain(TeamRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Deployable))))
     }
 
     "Set type Library if not Service and has src/main/scala and has tags" in {
@@ -266,7 +266,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
       val persister = new StubTeamsAndReposPersister
 
-      val repositories: Seq[TeamRepositories] = dataSource.persistTeamsAndReposMapping().futureValue
+      val repositories: Seq[TeamRepositories] = dataSource.getTeamRepoMapping.futureValue
 
       repositories should contain(TeamRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Library))))
 
@@ -295,7 +295,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
       val persister = new StubTeamsAndReposPersister
 
-      val repositories = dataSource.persistTeamsAndReposMapping().futureValue
+      val repositories = dataSource.getTeamRepoMapping.futureValue
 
       repositories should contain(TeamRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Library))))
 
@@ -322,7 +322,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
       val persister = new StubTeamsAndReposPersister
 
-      val repositories = dataSource.persistTeamsAndReposMapping().futureValue
+      val repositories = dataSource.getTeamRepoMapping.futureValue
 
       repositories should contain(TeamRepositories("D", List(GitRepository("D_r", "some description", "url_D", now, now, repoType = RepoType.Other))))
 
@@ -370,7 +370,7 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
 
       val persister = new StubTeamsAndReposPersister
 
-      dataSource.persistTeamsAndReposMapping().futureValue(Timeout(1 minute)) shouldBe List(
+      dataSource.getTeamRepoMapping.futureValue(Timeout(1 minute)) shouldBe List(
         TeamRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now))))
     }
 

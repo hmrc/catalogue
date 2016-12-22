@@ -7,7 +7,7 @@ import play.Logger
 import uk.gov.hmrc.githubclient.GithubApiClient
 import uk.gov.hmrc.teamsandrepositories.config.GithubConfig
 
-import scala.collection.immutable.Seq
+
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
@@ -61,16 +61,16 @@ class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
   val dataSources = List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)
 
 
-  //!@ remove this once done
-  def traverseDataSources: Future[Seq[TeamRepositories]] =
-    Future.sequence(dataSources.map(_.persistTeamsAndReposMapping())).map { results =>
-      val flattened = results.flatten
-      Logger.info(s"Combining ${flattened.length} results from ${dataSources.length} sources")
-      flattened.groupBy(_.teamName).map { case (name, teams) =>
-        TeamRepositories(name, teams.flatMap(t => t.repositories).sortBy(_.name))
-      }.toList
-
-    }
+//  //!@ remove this once done
+//  def traverseDataSources: Future[Seq[TeamRepositories]] =
+//    Future.sequence(dataSources.map(_.persistTeamsAndReposMapping())).map { results =>
+//      val flattened = results.flatten
+//      Logger.info(s"Combining ${flattened.length} results from ${dataSources.length} sources")
+//      flattened.groupBy(_.teamName).map { case (name, teams) =>
+//        TeamRepositories(name, teams.flatMap(t => t.repositories).sortBy(_.name))
+//      }.toList
+//
+//    }
 
 
   def persistTeamRepoMapping: Future[Seq[TeamRepositories]] = {
@@ -84,17 +84,19 @@ class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
       }.toList.map(tr => persister.update(tr)))
     }.flatMap(identity).andThen {
       case Failure(t) => throw t
-      case Success(_) => persister.updateTimestamp(LocalDateTime.now())
+      case Success(_) => persister.updateTimestamp(LocalDateTime.now()) //!@ test this
     }
   }
 
-  def removeOrphanTeamsFromMongo(teamNamesFromGh: Seq[TeamRepositories]) = {
+  def removeOrphanTeamsFromMongo(teamRepositoriesFromGh: Seq[TeamRepositories]) = {
 
     val teamNamesFromMongo: Future[Set[String]] = {
       persister.getAllTeamAndRepos.map { case (allPersistedTeamAndRepositories, _) =>
         allPersistedTeamAndRepositories.map(_.teamName).toSet
       }
     }
+
+    val teamNamesFromGh = teamRepositoriesFromGh.map(_.teamName)
 
     val orphanTeams: Future[Set[String]] = for {
       mongots <- teamNamesFromMongo

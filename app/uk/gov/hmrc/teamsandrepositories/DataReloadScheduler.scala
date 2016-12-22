@@ -6,7 +6,6 @@ import play.Logger
 import play.api.inject.ApplicationLifecycle
 import uk.gov.hmrc.teamsandrepositories.config.CacheConfig
 
-import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
