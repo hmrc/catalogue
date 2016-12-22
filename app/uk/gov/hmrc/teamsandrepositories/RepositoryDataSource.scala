@@ -51,14 +51,8 @@ object GitRepository {
 }
 
 
-//trait RepositoryDataSource {
-//  //  def getTeamRepoMapping: Future[Seq[TeamRepositories]]
-//
-//  def persistTeamsAndReposMapping(): Future[Seq[PersistedTeamAndRepositories]]
-//}
-
-
 case class TeamNamesTuple(ghNames: Option[Future[Set[String]]] = None, mongoNames: Option[Future[Set[String]]] = None)
+
 case object TeamNamesTuple {
   def apply(ghName: Future[Set[String]], mongoNames: Future[Set[String]]): TeamNamesTuple =
     TeamNamesTuple(Some(ghName), Some(mongoNames))
@@ -94,37 +88,6 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
     }
   }
 
-//  def removeDeletedTeams: Future[Seq[String]] = {
-//
-//    val teamNamesFromGh: Future[Seq[String]] = gh.getOrganisations.flatMap { orgs: Seq[GhOrganisation] =>
-//      val teams: Seq[Future[Seq[String]]] = orgs.map(org => gh.getTeamsForOrganisation(org.login).map((x: Seq[GhTeam]) => x.map(_.name)))
-//      Future.sequence(teams).map(_.flatten)
-//    }
-//
-//    val teamNamesFromMongo :Future[Seq[String]]= {
-//      persister.getAllTeamAndRepos.map{case (allPersistedTeamAndRepositories, _) =>
-//        allPersistedTeamAndRepositories.map(_.teamName)
-//      }
-//    }
-//
-//    val obsoleteTeams: Future[Seq[String]] = for {
-//      mongoTeams <- teamNamesFromMongo
-//      ghTeams <- teamNamesFromGh
-//    } yield mongoTeams.filterNot(ghTeams.toSet)
-//
-//    obsoleteTeams.flatMap(persister.deleteTeams)
-//
-//    //    gh.getOrganisations.flatMap { (orgs: Seq[GhOrganisation]) =>
-//    //      orgs.map { (org: GhOrganisation) =>
-//    //        for {
-//    //          teamsFromGh <- gh.getTeamsForOrganisation(org.login)
-//    //          persistedTeams: Seq[PersistedTeamAndRepositories] <- persistGhTeams(org, teamsFromGh)
-//    ////                _ =
-//    //        } removeDeletedTeams(persistedTeams.map(_.teamName))
-//    //      }
-//    //      ???
-//    //    }
-//  }
 
   def getTeamsNamesFromBothSources: TeamNamesTuple = {
 
@@ -133,20 +96,13 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
       Future.sequence(teams).map(_.flatten.toSet.filter(ts => !githubConfig.hiddenTeams.contains(ts)))
     }
 
-    val teamNamesFromMongo :Future[Set[String]]= {
-      persister.getAllTeamAndRepos.map{case (allPersistedTeamAndRepositories, _) =>
+    val teamNamesFromMongo: Future[Set[String]] = {
+      persister.getAllTeamAndRepos.map { case (allPersistedTeamAndRepositories, _) =>
         allPersistedTeamAndRepositories.map(_.teamName).toSet
       }
     }
 
     TeamNamesTuple(teamNamesFromGh, teamNamesFromMongo)
-
-//    val obsoleteTeams: Future[Seq[String]] = for {
-//      mongoTeams <- teamNamesFromMongo
-//      ghTeams <- teamNamesFromGh
-//    } yield mongoTeams.filterNot(ghTeams.toSet)
-//
-//    obsoleteTeams.flatMap(persister.deleteTeams)
 
   }
 
@@ -156,8 +112,7 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
       for {
         teamsFromGh <- gh.getTeamsForOrganisation(organisation.login)
         persistedTeams: Seq[PersistedTeamAndRepositories] <- persistGhTeams(organisation, teamsFromGh)
-      //        _ = removeDeletedTeams(persistedTeams.map(_.teamName))
-      } yield persistedTeams.toList
+      } yield persistedTeams
     }
   }
 
@@ -167,17 +122,6 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
         team <- teamsFromGh if !githubConfig.hiddenTeams.contains(team.name)
       } yield persistTeam(organisation, team))
   }
-
-//  //!@ delete this?
-//  private def removeDeletedTeams(teamsNamesFromGh: Seq[String]): Future[Seq[String]] = {
-//    for {
-//      teamsFromMongo <- persister.getAllTeamAndRepos.map(_._1.map(_.teamName))
-//      _ = println(s"teamsNamesFromGh: ${teamsNamesFromGh.sorted}")
-//      _ = println(s"teamsFromMongo: ${teamsFromMongo.sorted}")
-//      redundantTeams = teamsFromMongo.filterNot(x => teamsNamesFromGh.contains(x))
-//      result <- persister.deleteTeams(redundantTeams)
-//    } yield result
-//  }
 
   private def persistTeam(organisation: GhOrganisation, team: GhTeam): Future[PersistedTeamAndRepositories] =
     exponentialRetry(retries, initialDuration) {
@@ -254,19 +198,3 @@ class MongoLock @Inject()(mongoConnector: MongoConnector) extends LockKeeper {
 
   override val forceLockReleaseAfter: Duration = Duration.standardMinutes(20)
 }
-
-//trait CompositeRepositoryDataSource {
-//  val dataSources: List[GithubV3RepositoryDataSource]
-//
-//  import BlockingIOExecutionContext._
-//
-//  def traverseDataSources: Future[Seq[PersistedTeamAndRepositories]] =
-//    Future.sequence(dataSources.map(_.persistTeamsAndReposMapping())).map { results =>
-//      val flattened = results.flatten
-//      Logger.info(s"Combining ${flattened.length} results from ${dataSources.length} sources")
-//      flattened.groupBy(_.teamName).map { case (name, teams) =>
-//        PersistedTeamAndRepositories(name, teams.flatMap(t => t.repositories).sortBy(_.name))
-//      }.toList
-//
-//    }
-//}

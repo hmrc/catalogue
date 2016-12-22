@@ -19,9 +19,8 @@ package uk.gov.hmrc.teamsandrepositories
 import java.time.{LocalDateTime, ZoneOffset}
 
 import com.google.inject.{Inject, Singleton}
-import com.sun.org.apache.xpath.internal.functions.FuncTrue
+import play.api.Logger
 import play.api.libs.json._
-import reactivemongo.api.commands.WriteResult
 import reactivemongo.api.indexes.{Index, IndexType}
 import reactivemongo.bson.BSONObjectID
 import uk.gov.hmrc.mongo.ReactiveRepository
@@ -29,7 +28,6 @@ import uk.gov.hmrc.teamsandrepositories.FutureHelpers.withTimerAndCounter
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
 
 
 case class PersistedTeamAndRepositories(teamName: String,
@@ -73,7 +71,8 @@ class TeamsAndReposPersister @Inject()(mongoTeamsAndReposPersister: MongoTeamsAn
   }
 
   def deleteTeams(teamNames: Set[String]): Future[Set[String]] = {
-      Future.sequence(teamNames.map(mongoTeamsAndReposPersister.deleteTeam))
+    Logger.info(s"Deleting orphan teams: $teamNames")
+    Future.sequence(teamNames.map(mongoTeamsAndReposPersister.deleteTeam))
   }
 }
 

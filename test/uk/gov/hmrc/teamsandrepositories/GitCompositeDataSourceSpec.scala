@@ -29,9 +29,6 @@ class GitCompositeDataSourceSpec extends FunSpec with Matchers with MockitoSugar
   }
 
 
-
-  //  val sut = new GitCompositeDataSource(githubConfig, persister, connector, githubClientDecorator)
-
   describe("buildDataSource") {
     it("should create the right CompositeRepositoryDataSource") {
 
@@ -180,11 +177,6 @@ class GitCompositeDataSourceSpec extends FunSpec with Matchers with MockitoSugar
   }
 
   private def buildCompositeDataSource(dataSource1: GithubV3RepositoryDataSource, dataSource2: GithubV3RepositoryDataSource) = {
-
-//    val githubConfig = mock[GithubConfig]
-//    val persister = mock[TeamsAndReposPersister]
-//    val connector = mock[MongoConnector]
-//    val githubClientDecorator = mock[GithubApiClientDecorator]
 
     val gitApiOpenConfig = mock[GitApiConfig]
     val gitApiEnterpriseConfig = mock[GitApiConfig]

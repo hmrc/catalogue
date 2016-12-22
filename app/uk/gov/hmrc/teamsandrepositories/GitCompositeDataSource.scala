@@ -68,9 +68,6 @@ class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
 
     }
 
-  //  def removeDeletedTeams: Future[List[String]] = {
-  //    Future.sequence(dataSources.map(_.removeDeletedTeams)).map(_.flatten)
-  //  }
 
   def removeDeletedTeams: Future[Set[String]] = {
 
@@ -87,14 +84,7 @@ class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
       case _ => throw new RuntimeException("no chance we get here!")
     }
 
-    //    ret.foreach(println)
-    orphanTeamsInMongo.flatMap { (teamNames: Set[String]) =>
-      println(s"Deleting teams: $teamNames")
-      val ret = persister.deleteTeams(teamNames)
-
-      println(s"ret: $ret")
-      ret
-    }
+    orphanTeamsInMongo.flatMap((teamNames: Set[String]) => persister.deleteTeams(teamNames))
   }
 
 

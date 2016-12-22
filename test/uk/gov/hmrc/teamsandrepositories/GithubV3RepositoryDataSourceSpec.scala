@@ -374,34 +374,5 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
         PersistedTeamAndRepositories("A", List(GitRepository("A_r", "some description", "url_A", now, now))))
     }
 
-    "Removes redundant teams" in {
-
-      when(githubConfig.hiddenTeams).thenReturn(testHiddenTeams)
-      when(githubConfig.hiddenRepositories).thenReturn(testHiddenRepositories)
-
-      when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(githubclient.GhOrganisation("HMRC", 1))))
-      when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(githubclient.GhTeam("team1", 1))))
-
-      when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(githubclient.GhRepository("A_r", "some description", 1, "url_A", false, now, now))))
-
-      when(githubClient.repoContainsContent(anyString(), anyString(), anyString())(any[ExecutionContext])).thenReturn(Future.successful(false))
-
-
-      val persister2 = mock[TeamsAndReposPersister]
-
-      val team1Repos = PersistedTeamAndRepositories("team1", Nil)
-      val deletedTeamRepos = PersistedTeamAndRepositories("deletedTeam", Nil)
-
-      when(persister2.update(any())).thenReturn(Future.successful(team1Repos))
-      when(persister2.getAllTeamAndRepos).thenReturn(Future.successful((Seq(team1Repos, deletedTeamRepos), None)))
-      when(persister2.deleteTeams(Set("deletedTeam"))).thenReturn(Future.successful(Set("deletedTeam")))
-      when(persister2.updateTimestamp(any())).thenReturn(Future.successful(true))
-
-      val dataSource = new GithubV3RepositoryDataSource(githubConfig, githubClient, persister2, isInternal = false)
-
-      dataSource.persistTeamsAndReposMapping()
-
-      verify(persister2, Mockito.timeout(1000)).deleteTeams(Set("deletedTeam"))
-    }
   }
 }
