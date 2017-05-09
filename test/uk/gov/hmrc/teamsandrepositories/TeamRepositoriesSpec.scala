@@ -376,65 +376,64 @@ class TeamRepositoriesSpec extends WordSpec with Matchers with OptionValues{
     "Include all repository types when get the max last active and min created at for team" in {
 
       val teams = Seq(
-        TeamRepositories("teamName", List(oldDeployableRepo, newLibraryRepo, newOtherRepo)),
+        TeamRepositories("teamName", List(oldDeployableRepo.copy(name = "A"), newLibraryRepo.copy(name = "B"), newOtherRepo.copy(name = "C"))),
         TeamRepositories("teamNameOther", List(GitRepository("repo3", "Some description", "", isInternal = true, repoType = RepoType.Library, createdDate = timestamp, lastActiveDate = timestamp, digitalServiceName = None)))
       )
 
       val result = TeamRepositories.findTeam(teams, "teamName", Nil)
 
-      result shouldBe Some(
+      result.value shouldBe
         Team("teamName", Some(1), Some(40), Some(oldDeployableRepo.createdDate),
-          Some(Map(
-            RepoType.Service -> List("repo1"),
-            RepoType.Library -> List("repo1"),
-            RepoType.Prototype -> List(),
-            RepoType.Other -> List("repo1")
-          ))
+          Seq(Repository("A", 1, 10, RepoType.Service),
+              Repository("B", 3, 30, RepoType.Service),
+              Repository("C", 4, 40, RepoType.Service))
         )
-      )
+
     }
 
     "Exclude all shared repositories when calculating the min and max activity dates for a team" in {
 
       val teams = Seq(
-        TeamRepositories("teamName", List(oldDeployableRepo, newLibraryRepo, newOtherRepo, sharedRepo)),
+//        TeamRepositories("teamName", List(oldDeployableRepo, newLibraryRepo, newOtherRepo, sharedRepo)),
+        TeamRepositories("teamName", List(oldDeployableRepo.copy(name = "A"), newLibraryRepo.copy(name = "B"), newOtherRepo.copy(name = "C"), sharedRepo)),
         TeamRepositories("teamNameOther", List(GitRepository("repo3", "Some description", "", isInternal = true, repoType = RepoType.Library, createdDate = timestamp, lastActiveDate = timestamp, digitalServiceName = None)))
       )
 
       val result = TeamRepositories.findTeam(teams, "teamName", List("sharedRepo1", "sharedRepo2", "sharedRepo3"))
 
-      result shouldBe Some(
+      result.value shouldBe
         Team("teamName", Some(1), Some(40), Some(oldDeployableRepo.createdDate),
-          Some(Map(
-            RepoType.Service -> List("repo1"),
-            RepoType.Library -> List("repo1"),
-            RepoType.Prototype -> List(),
-            RepoType.Other -> List("repo1", "sharedRepo1")
-          ))
+          Seq(Repository("A", 1, 10, RepoType.Service),
+              Repository("B", 3, 30, RepoType.Service),
+              Repository("C", 4, 40, RepoType.Service),
+              Repository(sharedRepo.name, 5, 50, RepoType.Other))
         )
-      )
     }
 
 
     "populate firstServiceCreation date by looking at only the service repository" in {
 
       val teams = Seq(
-        TeamRepositories("teamName", List(newDeployableRepo, oldDeployableRepo, newLibraryRepo, newOtherRepo, sharedRepo)),
+        TeamRepositories("teamName", List(
+          newDeployableRepo.copy(name="A"),
+          oldDeployableRepo.copy(name = "B"),
+          newLibraryRepo.copy(name = "C"),
+          newOtherRepo.copy(name = "D"),
+          sharedRepo)),
         TeamRepositories("teamNameOther", List(GitRepository("repo3", "Some description", "", isInternal = true, repoType = RepoType.Library, createdDate = timestamp, lastActiveDate = timestamp, digitalServiceName = None)))
       )
 
       val result = TeamRepositories.findTeam(teams, "teamName", List("sharedRepo1", "sharedRepo2", "sharedRepo3"))
 
-      result shouldBe Some(
+
+      result.value shouldBe
         Team("teamName", Some(1), Some(40), Some(oldDeployableRepo.createdDate),
-          Some(Map(
-            RepoType.Service -> List("repo1"),
-            RepoType.Library -> List("repo1"),
-            RepoType.Prototype -> List(),
-            RepoType.Other -> List("repo1", "sharedRepo1")
-          ))
+          Seq(Repository("A", 2, 20, RepoType.Service),
+              Repository("B", 1, 10, RepoType.Service),
+              Repository("C", 3, 30, RepoType.Library),
+              Repository("D", 4, 40, RepoType.Other),
+              Repository("sharedRepo1", 5, 50, RepoType.Other))
         )
-      )
     }
 
 

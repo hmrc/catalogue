@@ -242,7 +242,11 @@ class TeamsRepositoriesControllerSpec extends PlaySpec with MockitoSugar with Re
       val timestampHeader = header("x-cache-timestamp", result)
       val data = contentAsJson(result).as[Team]
 
-      data.repos.value mustBe Map(
+      data.repos mustBe Seq(
+
+      )
+
+      Map(
         RepoType.Service -> List("another-repo", "middle-repo"),
         RepoType.Library -> List("alibrary-repo"),
         RepoType.Prototype -> List("CATO-prototype"),
@@ -261,7 +265,7 @@ class TeamsRepositoriesControllerSpec extends PlaySpec with MockitoSugar with Re
       val result = controller.repositoriesWithDetailsByTeam("another-team").apply(FakeRequest())
 
       contentAsJson(result)
-        .as[Team].repos.value mustBe Map(
+        .as[Team].repos mustBe Map(
         RepoType.Service -> List("repo-name"),
         RepoType.Library -> List(),
         RepoType.Prototype -> List(),
@@ -271,19 +275,15 @@ class TeamsRepositoriesControllerSpec extends PlaySpec with MockitoSugar with Re
     "not show the same service twice when it has an open and internal source repository" in {
       val sourceData =
         Seq(TeamRepositories("test-team", List(
-          GitRepository("repo-name", "some description", "Another-url", repoType = RepoType.Service, createdDate = now, lastActiveDate = now),
-          GitRepository("repo-name", "some description", "repo-url", repoType = RepoType.Service, createdDate = now, lastActiveDate = now),
+          GitRepository("repo-name", "some description", "Another-url", repoType = RepoType.Service, createdDate = now, lastActiveDate = now, isInternal = true),
+          GitRepository("repo-name", "some description", "repo-url", repoType = RepoType.Service, createdDate = now, lastActiveDate = now, isInternal = false),
           GitRepository("aadvark-repo", "some description", "aadvark-url", repoType = RepoType.Service, createdDate = now, lastActiveDate = now))))
 
       val controller = controllerWithData(sourceData, updateTimestamp = updateTimestamp)
       val result = controller.repositoriesWithDetailsByTeam("test-team").apply(FakeRequest())
 
       contentAsJson(result)
-        .as[Team].repos.value mustBe Map(
-        RepoType.Service -> List("aadvark-repo", "repo-name"),
-        RepoType.Library -> List(),
-        RepoType.Prototype -> List(),
-        RepoType.Other -> List()
+        .as[Team].repos mustBe Seq(Repository("aadvark-repo", now, now, RepoType.Service), Repository("repo-name" , now, now, RepoType.Service)
       )
     }
   }
