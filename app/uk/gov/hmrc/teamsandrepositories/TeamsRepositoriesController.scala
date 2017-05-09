@@ -27,6 +27,7 @@ import play.api.libs.json.Json.JsValueWrapper
 import play.api.libs.json._
 import play.api.mvc.{Results, _}
 import uk.gov.hmrc.play.microservice.controller.BaseController
+import uk.gov.hmrc.teamsandrepositories.TeamRepositories.DigitalService
 import uk.gov.hmrc.teamsandrepositories.config.{UrlTemplate, UrlTemplates, UrlTemplatesProvider}
 
 import scala.concurrent.ExecutionContext
@@ -119,7 +120,7 @@ case class Team(name: String,
                 firstActiveDate: Option[Long] = None,
                 lastActiveDate: Option[Long] = None,
                 firstServiceCreationDate: Option[Long] = None,
-                repos: Option[Map[RepoType.Value, Seq[String]]])
+                repos: Seq[Repository])
 
 object Team {
 
@@ -190,7 +191,7 @@ class TeamsRepositoriesController @Inject()(dataReloadScheduler: DataReloadSched
       TeamRepositories.findDigitalServiceDetails(allTeamsAndRepos, sanitisedDigitalServiceName) match {
         case None =>
           NotFound
-        case Some(x: RepositoryDetails) =>
+        case Some(x: DigitalService) =>
           Ok(Json.toJson(x)).withHeaders(TimestampHeaderName -> format(timestamp))
       }
     }

@@ -366,13 +366,11 @@ class TeamRepositoriesSpec extends WordSpec with Matchers with OptionValues{
     "get the max last active and min created at for repositories with the same name" in {
       val result = TeamRepositories.findTeam(teams, "teamName", Nil)
 
-      result shouldBe Some(Team(name = "teamName", firstActiveDate = Some(1), lastActiveDate = Some(20), firstServiceCreationDate = Some(oldDeployableRepo.createdDate),
-        repos = Some(Map(
-          RepoType.Service -> List("repo1"),
-          RepoType.Library -> List(),
-          RepoType.Prototype -> List(),
-          RepoType.Other -> List())))
-      )
+      val oldDeployableRepo = GitRepository("repo1", "Some description", "", isInternal = false, repoType = RepoType.Service, createdDate = 1, lastActiveDate = 10, digitalServiceName = None)
+      val newDeployableRepo = GitRepository("repo1", "Some description", "", isInternal = true, repoType = RepoType.Service, createdDate = 2, lastActiveDate = 20, digitalServiceName = None)
+
+      result.value shouldBe Team(name = "teamName", firstActiveDate = Some(1), lastActiveDate = Some(20), firstServiceCreationDate = Some(oldDeployableRepo.createdDate),
+        repos = Seq(Repository("repo1", 1, 20, RepoType.Service)))
     }
 
     "Include all repository types when get the max last active and min created at for team" in {

@@ -47,7 +47,7 @@ object TeamRepositories {
   def getTeamList(teamRepos: Seq[TeamRepositories], repositoriesToIgnore: List[String]): Seq[Team] =
     teamRepos.map(_.teamName).map { tn =>
       val repos: Seq[GitRepository] = teamRepos.filter(_.teamName == tn).flatMap(_.repositories)
-      val team = Team(name = tn, repos = None)
+      val team = Team(name = tn, repos = Nil)
       if (repos.nonEmpty) {
         val teamActivityDates = GitRepository.getTeamActivityDatesOfNonSharedRepos(repos, repositoriesToIgnore)
         team.copy(firstActiveDate = teamActivityDates.firstActiveDate, lastActiveDate = teamActivityDates.lastActiveDate)
@@ -117,19 +117,12 @@ object TeamRepositories {
 
         val teamActivityDates = GitRepository.getTeamActivityDatesOfNonSharedRepos(teamRepositories.repositories, repositoriesToIgnore)
 
-        def getRepositoryDisplayDetails(repoType: RepoType.Value): List[String] = {
-          teamRepositories.repositories
-            .filter(_.repoType == repoType)
-            .map(_.name)
-            .distinct
-            .sortBy(_.toUpperCase)
-        }
-
-        val repos = RepoType.values.foldLeft(Map.empty[RepoType.Value, List[String]]) { case (m, repoType) =>
-          m + (repoType -> getRepositoryDisplayDetails(repoType))
-        }
-
-        Team(teamName, teamActivityDates.firstActiveDate, teamActivityDates.lastActiveDate, teamActivityDates.firstServiceCreationDate, Some(repos))
+        Team(
+          teamName,
+          teamActivityDates.firstActiveDate,
+          teamActivityDates.lastActiveDate,
+          teamActivityDates.firstServiceCreationDate,
+          identifyRepositories(teamRepositories.repositories))
       }
   }
 
