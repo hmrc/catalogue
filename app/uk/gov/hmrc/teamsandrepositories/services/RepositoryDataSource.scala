@@ -17,12 +17,10 @@
 package uk.gov.hmrc.teamsandrepositories.services
 
 import com.google.inject.{Inject, Singleton}
-import org.joda.time.Duration
 import org.slf4j.LoggerFactory
 import org.yaml.snakeyaml.Yaml
 import play.api.libs.json._
 import uk.gov.hmrc.githubclient.{GhOrganisation, GhRepository, GhTeam, GithubApiClient}
-import uk.gov.hmrc.lock.{LockKeeper, LockMongoRepository, LockRepository}
 import uk.gov.hmrc.teamsandrepositories.RepoType._
 import uk.gov.hmrc.teamsandrepositories.helpers.RetryStrategy._
 import uk.gov.hmrc.teamsandrepositories.config.GithubConfig
@@ -101,7 +99,7 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
         isInternal = this.isInternal,
         isPrivate = repository.isPrivate,
         repoType = repositoryType,
-        digitalServiceName = maybeDigitalServiceName)
+        digitalServiceName = maybeDigitalServiceName, None) //!@
     }
   }
 
@@ -200,11 +198,3 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
 
 }
 
-@Singleton
-class MongoLock @Inject()(mongoConnector: MongoConnector) extends LockKeeper {
-  override def repo: LockRepository = LockMongoRepository(mongoConnector.db)
-
-  override def lockId: String = "teams-and-repositories-sync-job"
-
-  override val forceLockReleaseAfter: Duration = Duration.standardMinutes(20)
-}
