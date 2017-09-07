@@ -33,11 +33,24 @@ import scala.util.{Failure, Success, Try}
 
 case class TeamNamesTuple(ghNames: Option[Future[Set[String]]] = None, mongoNames: Option[Future[Set[String]]] = None)
 
-@Singleton
-class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
-                                             gh: GithubApiClient,
-                                             persister: TeamsAndReposPersister,
-                                             val isInternal: Boolean) {
+case class TeamAndOrgAndDataSource(organisation: GhOrganisation, team: GhTeam, dataSource: GithubV3RepositoryDataSource)
+
+case class OneTeamAndItsDataSources(teamName: String, teamAndDataSources: Seq[TeamAndOrgAndDataSource])
+object OneTeamAndItsDataSources {
+
+  def apply(teamAndDataSources: Seq[TeamAndOrgAndDataSource]): OneTeamAndItsDataSources = {
+    val uniqueTeamNames = teamAndDataSources.map(_.team.name).toSet
+    require(uniqueTeamNames.size == 1, s"All records much belong to the same team! teams:($uniqueTeamNames)")
+    new OneTeamAndItsDataSources(teamAndDataSources.head.team.name, teamAndDataSources)
+  }
+
+}
+
+
+class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
+                                   val gh: GithubApiClient,
+                                   persister: TeamsAndReposPersister,
+                                   val isInternal: Boolean) {
 
 
   lazy val logger = LoggerFactory.getLogger(this.getClass)
@@ -51,6 +64,19 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
 
   val retries: Int = 5
   val initialDuration: Double = 50
+
+  def getTeamsWithOrgAndDataSourceDetails: Future[List[TeamAndOrgAndDataSource]] = {
+    gh.getOrganisations.flatMap{ orgs =>
+      Future.sequence(
+        orgs.map(org => gh.getTeamsForOrganisation(org.login).map(teams => (org, teams)))
+      ).map(_.map {case (ghOrg, ghTeams) =>
+        val goodGhTeams = ghTeams.filter(team => !githubConfig.hiddenTeams.contains(team.name))
+//        val goodGhTeams = ghTeams.filter(team => !githubConfig.hiddenTeams.contains(team.name) && team.name.toLowerCase.contains("platops"))
+        goodGhTeams.map(ghTeam => TeamAndOrgAndDataSource(ghOrg, ghTeam, this))
+        
+      }).map(_.flatten)
+    }
+  }
 
   def getTeamRepoMapping: Future[Seq[TeamRepositories]] =
     exponentialRetry(retries, initialDuration) {
@@ -70,7 +96,7 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
       }
     }
 
-  private def mapTeam(organisation: GhOrganisation, team: GhTeam): Future[TeamRepositories] = {
+  def mapTeam(organisation: GhOrganisation, team: GhTeam): Future[TeamRepositories] = {
     logger.debug(s"Mapping team (${team.name})")
     exponentialRetry(retries, initialDuration) {
       gh.getReposForTeam(team.id).flatMap { repos =>
@@ -82,6 +108,28 @@ class GithubV3RepositoryDataSource @Inject()(githubConfig: GithubConfig,
       }
     }
 }
+  //!@
+  def mapTeam_new(organisation: GhOrganisation, team: GhTeam): Future[Option[TeamRepositories]] = {
+    logger.warn(s"Mapping team (${team.name})")
+
+    val eventualRepositories = gh.getReposForTeam(team.id).flatMap { repos =>
+      println(s"000===> team: ${team.name} -> REPOS: ${repos.size} <===000")
+      Future.sequence(for {
+              repo <- repos; if !repo.fork && !githubConfig.hiddenRepositories.contains(repo.name)
+      } yield mapRepository(organisation, repo)).map { (repos: List[GitRepository]) =>
+        Some(TeamRepositories(team.name, repositories = repos))
+      }
+    }
+    eventualRepositories.recover{ case e if e.getMessage.contains("API rate limit exceeded") =>
+
+      println("-" * 100)
+      println(s"=-=-=-> ${e.getMessage}")
+      println("-" * 100)
+      None
+    }
+
+  }
+
   private def mapRepository(organisation: GhOrganisation, repository: GhRepository): Future[GitRepository] = {
     for {
       manifest <- gh.getFileContent("repository.yaml", repository.name, organisation.login)

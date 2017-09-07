@@ -4,7 +4,7 @@ import java.time.LocalDateTime
 
 import com.google.inject.{Inject, Singleton}
 import org.slf4j.LoggerFactory
-import uk.gov.hmrc.githubclient.GithubApiClient
+import uk.gov.hmrc.githubclient.{GhTeam, GithubApiClient}
 import uk.gov.hmrc.teamsandrepositories.config.GithubConfig
 import uk.gov.hmrc.teamsandrepositories.persitence.{MongoConnector, TeamsAndReposPersister}
 import uk.gov.hmrc.teamsandrepositories.persitence.model.TeamRepositories
@@ -39,6 +39,35 @@ class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
 
   val dataSources = List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)
 
+
+  //!@ test
+  def persistTeamRepoMapping_new: Future[Seq[TeamRepositories]] = {
+    groupTeamsAndTheirDataSources.flatMap((ts: Seq[OneTeamAndItsDataSources]) =>
+      Future.sequence(ts.map { aTeam: OneTeamAndItsDataSources =>
+        getRepositoriesForTeam(aTeam).map(mergeRepositoriesForTeam(aTeam.teamName, _)).flatMap(persister.update)
+      })).map(_.toSeq)
+  }
+
+  def getRepositoriesForTeam(aTeam: OneTeamAndItsDataSources): Future[Seq[Option[TeamRepositories]]] = {
+    Future.sequence(aTeam.teamAndDataSources.map { teamAndDataSource =>
+      teamAndDataSource.dataSource.mapTeam_new(teamAndDataSource.organisation, teamAndDataSource.team)
+    })
+  }
+
+  //!@ test
+  def groupTeamsAndTheirDataSources: Future[Seq[OneTeamAndItsDataSources]] = {
+    Future.sequence(dataSources.map(ds => ds.getTeamsWithOrgAndDataSourceDetails))
+      .map { teamsAndTheirOrgAndDataSources =>
+        teamsAndTheirOrgAndDataSources.flatten.groupBy(_.team.name)
+          .map { case (teamName, tds) => OneTeamAndItsDataSources(teamName, tds) }.toSeq
+      }
+  }
+
+  def mergeRepositoriesForTeam(teamName: String, aTeamAndItsRepositories: Seq[Option[TeamRepositories]]) = {
+    aTeamAndItsRepositories.flatten.foldLeft(TeamRepositories(teamName, Nil)) { case (acc, tr) =>
+      acc.copy(repositories = acc.repositories ++ tr.repositories)
+    }
+  }
 
   def persistTeamRepoMapping: Future[Seq[TeamRepositories]] = {
 
