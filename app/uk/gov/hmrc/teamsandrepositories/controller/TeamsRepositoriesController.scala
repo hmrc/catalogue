@@ -41,7 +41,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 
 object BlockingIOExecutionContext {
-  implicit val executionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(64))
+  implicit val executionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(20))
 }
 
 

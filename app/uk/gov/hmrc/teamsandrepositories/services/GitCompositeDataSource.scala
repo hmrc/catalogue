@@ -42,29 +42,36 @@ class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
 
   //!@ test
   def persistTeamRepoMapping_new: Future[Seq[TeamRepositories]] = {
-    groupTeamsAndTheirDataSources.flatMap((ts: Seq[OneTeamAndItsDataSources]) =>
+    val teamsOrderedByUpdateDate: Future[Seq[TeamRepositories]] = persister.getAllTeams.map(_.sortBy(_.updateDate))
+
+    groupAndOrderTeamsAndTheirDataSources(teamsOrderedByUpdateDate).flatMap((ts: Seq[OneTeamAndItsDataSources]) =>
       Future.sequence(ts.map { aTeam: OneTeamAndItsDataSources =>
         getRepositoriesForTeam(aTeam).map(mergeRepositoriesForTeam(aTeam.teamName, _)).flatMap(persister.update)
       })).map(_.toSeq)
   }
 
-  def getRepositoriesForTeam(aTeam: OneTeamAndItsDataSources): Future[Seq[Option[TeamRepositories]]] = {
+  def getRepositoriesForTeam(aTeam: OneTeamAndItsDataSources): Future[Seq[TeamRepositories]] = {
     Future.sequence(aTeam.teamAndDataSources.map { teamAndDataSource =>
       teamAndDataSource.dataSource.mapTeam_new(teamAndDataSource.organisation, teamAndDataSource.team)
     })
   }
 
   //!@ test
-  def groupTeamsAndTheirDataSources: Future[Seq[OneTeamAndItsDataSources]] = {
-    Future.sequence(dataSources.map(ds => ds.getTeamsWithOrgAndDataSourceDetails))
-      .map { teamsAndTheirOrgAndDataSources =>
-        teamsAndTheirOrgAndDataSources.flatten.groupBy(_.team.name)
-          .map { case (teamName, tds) => OneTeamAndItsDataSources(teamName, tds) }.toSeq
-      }
+  def groupAndOrderTeamsAndTheirDataSources(teamNamesOrderedByUpdateDateF: Future[Seq[TeamRepositories]]): Future[Seq[OneTeamAndItsDataSources]] = {
+    for {
+      teamsAndTheirOrgAndDataSources <- Future.sequence(dataSources.map(ds => ds.getTeamsWithOrgAndDataSourceDetails))
+      teamNamesOrderedByUpdateDate <- teamNamesOrderedByUpdateDateF
+    } yield {
+      val teamNameToSources: Map[String, List[TeamAndOrgAndDataSource]] = teamsAndTheirOrgAndDataSources.flatten.groupBy(_.team.name)
+      teamNameToSources.map { case (teamName, tds) => {
+        OneTeamAndItsDataSources(teamName, tds, teamNamesOrderedByUpdateDate.find(_.teamName == teamName).fold(0L)(_.updateDate))
+      }}
+    }.toSeq.sortBy(_.updateDate)
+    
   }
 
-  def mergeRepositoriesForTeam(teamName: String, aTeamAndItsRepositories: Seq[Option[TeamRepositories]]) = {
-    aTeamAndItsRepositories.flatten.foldLeft(TeamRepositories(teamName, Nil)) { case (acc, tr) =>
+  def mergeRepositoriesForTeam(teamName: String, aTeamAndItsRepositories: Seq[TeamRepositories]) = {
+    aTeamAndItsRepositories.foldLeft(TeamRepositories(teamName, Nil)) { case (acc, tr) =>
       acc.copy(repositories = acc.repositories ++ tr.repositories)
     }
   }
