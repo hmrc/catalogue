@@ -42,30 +42,34 @@ class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
 
   //!@ test
   def persistTeamRepoMapping_new: Future[Seq[TeamRepositories]] = {
-    val teamsOrderedByUpdateDate: Future[Seq[TeamRepositories]] = persister.getAllTeams.map(_.sortBy(_.updateDate))
+    val persistedTeams: Future[Seq[TeamRepositories]] = persister.getAllTeams
 
-    groupAndOrderTeamsAndTheirDataSources(teamsOrderedByUpdateDate).flatMap((ts: Seq[OneTeamAndItsDataSources]) =>
+    val sortedByUpdateDate = groupAndOrderTeamsAndTheirDataSources(persistedTeams)
+    sortedByUpdateDate.flatMap { ts: Seq[OneTeamAndItsDataSources] =>
+      println("------ TEAM NAMES -----")
+      ts.map(_.teamName).foreach(println)
+      println("^^^^^^ TEAM NAMES ^^^^^^")
+
       Future.sequence(ts.map { aTeam: OneTeamAndItsDataSources =>
-        getRepositoriesForTeam(aTeam).map(mergeRepositoriesForTeam(aTeam.teamName, _)).flatMap(persister.update)
-      })).map(_.toSeq)
+        getAllRepositoriesForTeam(aTeam).map(mergeRepositoriesForTeam(aTeam.teamName, _)).flatMap(persister.update)
+      })
+    }.map(_.toSeq)
   }
 
-  def getRepositoriesForTeam(aTeam: OneTeamAndItsDataSources): Future[Seq[TeamRepositories]] = {
+  def getAllRepositoriesForTeam(aTeam: OneTeamAndItsDataSources): Future[Seq[TeamRepositories]] = {
     Future.sequence(aTeam.teamAndDataSources.map { teamAndDataSource =>
       teamAndDataSource.dataSource.mapTeam_new(teamAndDataSource.organisation, teamAndDataSource.team)
     })
   }
 
   //!@ test
-  def groupAndOrderTeamsAndTheirDataSources(teamNamesOrderedByUpdateDateF: Future[Seq[TeamRepositories]]): Future[Seq[OneTeamAndItsDataSources]] = {
+  def groupAndOrderTeamsAndTheirDataSources(persistedTeamsF: Future[Seq[TeamRepositories]]): Future[Seq[OneTeamAndItsDataSources]] = {
     for {
       teamsAndTheirOrgAndDataSources <- Future.sequence(dataSources.map(ds => ds.getTeamsWithOrgAndDataSourceDetails))
-      teamNamesOrderedByUpdateDate <- teamNamesOrderedByUpdateDateF
+      persistedTeams <- persistedTeamsF
     } yield {
       val teamNameToSources: Map[String, List[TeamAndOrgAndDataSource]] = teamsAndTheirOrgAndDataSources.flatten.groupBy(_.team.name)
-      teamNameToSources.map { case (teamName, tds) => {
-        OneTeamAndItsDataSources(teamName, tds, teamNamesOrderedByUpdateDate.find(_.teamName == teamName).fold(0L)(_.updateDate))
-      }}
+      teamNameToSources.map { case (teamName, tds) => OneTeamAndItsDataSources(teamName, tds, persistedTeams.find(_.teamName == teamName).fold(0L)(_.updateDate))}
     }.toSeq.sortBy(_.updateDate)
     
   }

@@ -108,24 +108,26 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
       }
     }
 }
+
   //!@
   def mapTeam_new(organisation: GhOrganisation, team: GhTeam): Future[TeamRepositories] = {
     logger.warn(s"Mapping team (${team.name})")
-
-    val eventualRepositories = gh.getReposForTeam(team.id).flatMap { repos =>
-      println(s"000===> team: ${team.name} -> REPOS: ${repos.size} <===000")
-      Future.sequence(for {
-              repo <- repos; if !repo.fork && !githubConfig.hiddenRepositories.contains(repo.name)
-      } yield mapRepository(organisation, repo)).map { (repos: List[GitRepository]) =>
-        TeamRepositories(team.name, repositories = repos)
+    exponentialRetry(retries, initialDuration) {
+      val eventualRepositories = gh.getReposForTeam(team.id).flatMap { repos =>
+        println(s"000===> team: ${team.name} -> REPOS: ${repos.size} <===000")
+        Future.sequence(for {
+          repo <- repos; if !repo.fork && !githubConfig.hiddenRepositories.contains(repo.name)
+        } yield mapRepository(organisation, repo)).map { (repos: List[GitRepository]) =>
+          TeamRepositories(team.name, repositories = repos)
+        }
       }
-    }
 
-    eventualRepositories.recover{ case e =>
-      println("-" * 100)
-      println(s"ERROR: $team =-=-=-> ${e.getMessage}")
-      println("-" * 100)
-      throw e
+      eventualRepositories.recover{ case e =>
+        println("-" * 100)
+        println(s"ERROR: $team =-=-=-> ${e.getMessage}")
+        println("-" * 100)
+        throw e
+      }
     }
 
   }
