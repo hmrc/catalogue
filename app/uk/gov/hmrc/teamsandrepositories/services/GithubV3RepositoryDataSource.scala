@@ -36,6 +36,7 @@ case class TeamNamesTuple(ghNames: Option[Future[Set[String]]] = None, mongoName
 case class TeamAndOrgAndDataSource(organisation: GhOrganisation, team: GhTeam, dataSource: GithubV3RepositoryDataSource)
 
 case class OneTeamAndItsDataSources(teamName: String, teamAndDataSources: Seq[TeamAndOrgAndDataSource], updateDate: Long)
+
 object OneTeamAndItsDataSources {
 
   def apply(teamAndDataSources: Seq[TeamAndOrgAndDataSource], updateDate: Long): OneTeamAndItsDataSources = {
@@ -66,14 +67,14 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
   val initialDuration: Double = 50
 
   def getTeamsWithOrgAndDataSourceDetails: Future[List[TeamAndOrgAndDataSource]] = {
-    gh.getOrganisations.flatMap{ orgs =>
+    gh.getOrganisations.flatMap { orgs =>
       Future.sequence(
         orgs.map(org => gh.getTeamsForOrganisation(org.login).map(teams => (org, teams)))
-      ).map(_.map {case (ghOrg, ghTeams) =>
+      ).map(_.map { case (ghOrg, ghTeams) =>
         val goodGhTeams = ghTeams.filter(team => !githubConfig.hiddenTeams.contains(team.name))
-//        val goodGhTeams = ghTeams.filter(team => !githubConfig.hiddenTeams.contains(team.name) && team.name.toLowerCase.startsWith("op"))
+        //        val goodGhTeams = ghTeams.filter(team => !githubConfig.hiddenTeams.contains(team.name) && team.name.toLowerCase.startsWith("op"))
         goodGhTeams.map(ghTeam => TeamAndOrgAndDataSource(ghOrg, ghTeam, this))
-        
+
       }).map(_.flatten)
     }
   }
@@ -107,37 +108,37 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
         }
       }
     }
-}
-
-  //!@
-  def mapTeam_new(organisation: GhOrganisation, team: GhTeam): Future[TeamRepositories] = {
-    logger.warn(s"Mapping team (${team.name})")
-    exponentialRetry(retries, initialDuration) {
-      val eventualRepositories = gh.getReposForTeam(team.id).flatMap { repos =>
-        println(s"000===> team: ${team.name} -> REPOS: ${repos.size} <===000")
-        Future.sequence(for {
-          repo <- repos; if !repo.fork && !githubConfig.hiddenRepositories.contains(repo.name)
-        } yield mapRepository(organisation, repo)).map { (repos: List[GitRepository]) =>
-          TeamRepositories(team.name, repositories = repos)
-        }
-      }
-
-      eventualRepositories.recover{ case e =>
-        println("-" * 100)
-        println(s"ERROR: $team =-=-=-> ${e.getMessage}")
-        println("-" * 100)
-        throw e
-      }
-    }
-
   }
+
+  //  //!@
+  //  def mapTeam_new(organisation: GhOrganisation, team: GhTeam): Future[TeamRepositories] = {
+  //    logger.warn(s"Mapping team (${team.name})")
+  //    exponentialRetry(retries, initialDuration) {
+  //      val eventualRepositories = gh.getReposForTeam(team.id).flatMap { repos =>
+  //        println(s"000===> team: ${team.name} -> REPOS: ${repos.size} <===000")
+  //        Future.sequence(for {
+  //          repo <- repos; if !repo.fork && !githubConfig.hiddenRepositories.contains(repo.name)
+  //        } yield mapRepository(organisation, repo)).map { (repos: List[GitRepository]) =>
+  //          TeamRepositories(team.name, repositories = repos)
+  //        }
+  //      }
+  //
+  //      eventualRepositories.recover{ case e =>
+  //        println("-" * 100)
+  //        println(s"ERROR: $team =-=-=-> ${e.getMessage}")
+  //        println("-" * 100)
+  //        throw e
+  //      }
+  //    }
+  //
+  //  }
 
   private def mapRepository(organisation: GhOrganisation, repository: GhRepository): Future[GitRepository] = {
     for {
       manifest <- gh.getFileContent("repository.yaml", repository.name, organisation.login)
       maybeManifestDetails = getMaybeManifestDetails(repository.name, manifest)
       repositoryType <- identifyRepository(repository, organisation, maybeManifestDetails.flatMap(_.repositoryType))
-    
+
       maybeDigitalServiceName = maybeManifestDetails.flatMap(_.digitalServiceName)
     } yield {
       logger.debug(s"Mapping repository (${repository.name}) as $repositoryType")
@@ -149,7 +150,7 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
         isInternal = this.isInternal,
         isPrivate = repository.isPrivate,
         repoType = repositoryType,
-        digitalServiceName = maybeDigitalServiceName, None) //!@
+        digitalServiceName = maybeDigitalServiceName) 
     }
   }
 
@@ -208,7 +209,9 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
   }
 
   private def isPrototype(repo: GhRepository): Future[Boolean] =
-    Future.successful {repo.name.endsWith("-prototype")}
+    Future.successful {
+      repo.name.endsWith("-prototype")
+    }
 
   private def isReleasable(repo: GhRepository, organisation: GhOrganisation): Future[Boolean] = {
     import uk.gov.hmrc.teamsandrepositories.helpers.FutureExtras._

@@ -20,8 +20,8 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import play.api.inject.bind
-import uk.gov.hmrc.teamsandrepositories.persitence.MongoConnector
-import uk.gov.hmrc.teamsandrepositories.services.{GitCompositeDataSource, MongoLock}
+import uk.gov.hmrc.teamsandrepositories.persitence.{MongoConnector, MongoLock}
+import uk.gov.hmrc.teamsandrepositories.services.GitCompositeDataSource
 
 class ModuleSpec extends PlaySpec with MockitoSugar with Results with OptionValues with OneServerPerSuite with Eventually {
 
@@ -58,7 +58,7 @@ class ModuleSpec extends PlaySpec with MockitoSugar with Results with OptionValu
     val key = Key.get(new TypeLiteral[DataReloadScheduler]() {})
 
     guiceInjector.getInstance(key).isInstanceOf[DataReloadScheduler] mustBe true
-    verify(mockCompositeRepositoryDataSource, Mockito.timeout(500).atLeast(2)).persistTeamRepoMapping
+    verify(mockCompositeRepositoryDataSource, Mockito.timeout(500).atLeast(2)).persistTeamRepoMapping_new
 
   }
 }

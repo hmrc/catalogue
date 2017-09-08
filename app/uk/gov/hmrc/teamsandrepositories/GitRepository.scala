@@ -18,7 +18,6 @@ case class GitRepository(name: String,
                          isPrivate: Boolean = false,
                          repoType: RepoType = RepoType.Other,
                          digitalServiceName: Option[String] = None,
-                         lastGitUpdateDate: Option[Long],
                          updateDate: Long = System.currentTimeMillis())
 
 object GitRepository {
@@ -37,7 +36,6 @@ object GitRepository {
         (JsPath \ "isPrivate").readNullable[Boolean].map(_.getOrElse(false)) and
         (JsPath \ "repoType").read[RepoType] and
         (JsPath \ "digitalServiceName").readNullable[String] and
-        (JsPath \ "lastGitUpdateDate").readNullable[Long] and
         (JsPath \ "updateDate").read[Long]
       ) (GitRepository.apply _)
 
