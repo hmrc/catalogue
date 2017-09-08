@@ -51,7 +51,8 @@ object OneTeamAndItsDataSources {
 class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
                                    val gh: GithubApiClient,
                                    persister: TeamsAndReposPersister,
-                                   val isInternal: Boolean) {
+                                   val isInternal: Boolean,
+                                   timestampF: () => Long) {
 
 
   lazy val logger = LoggerFactory.getLogger(this.getClass)
@@ -104,7 +105,8 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
         Future.sequence(for {
           repo <- repos; if !repo.fork && !githubConfig.hiddenRepositories.contains(repo.name)
         } yield mapRepository(organisation, repo)).map { (repos: List[GitRepository]) =>
-          TeamRepositories(team.name, repositories = repos, System.currentTimeMillis())
+
+          TeamRepositories(team.name, repositories = repos, timestampF())
         }
       }
     }
@@ -150,7 +152,8 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
         isInternal = this.isInternal,
         isPrivate = repository.isPrivate,
         repoType = repositoryType,
-        digitalServiceName = maybeDigitalServiceName) 
+        digitalServiceName = maybeDigitalServiceName,
+        timestampF())
     }
   }
 

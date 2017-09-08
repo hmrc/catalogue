@@ -51,7 +51,7 @@ class DataReloadSchedulerSpec extends PlaySpec with MockitoSugar with Results wi
         cacheConfig = mockCacheConfig,
         mongoLock = testMongoLock)
 
-    verify(mockGitCompositeDataSource, Mockito.timeout(500).atLeast(2)).persistTeamRepoMapping
+    verify(mockGitCompositeDataSource, Mockito.timeout(500).atLeast(2)).persistTeamRepoMapping_new
     verify(mockGitCompositeDataSource, Mockito.timeout(500).atLeast(2)).removeOrphanTeamsFromMongo(any())
   }
 }

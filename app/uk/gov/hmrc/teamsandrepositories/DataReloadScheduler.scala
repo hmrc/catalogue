@@ -17,8 +17,7 @@ class DataReloadScheduler @Inject()(actorSystem: ActorSystem,
                                     applicationLifecycle: ApplicationLifecycle,
                                     githubCompositeDataSource: GitCompositeDataSource,
                                     cacheConfig: CacheConfig,
-                                    mongoLock: MongoLock
-                                   )(implicit ec: ExecutionContext) {
+                                    mongoLock: MongoLock)(implicit ec: ExecutionContext) {
 
   private val cacheDuration = cacheConfig.teamsCacheDuration
 

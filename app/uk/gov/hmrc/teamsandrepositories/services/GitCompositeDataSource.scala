@@ -15,10 +15,17 @@ import scala.util.{Failure, Success}
 
 
 @Singleton
+class Timestamper {
+   def timestampF() = System.currentTimeMillis()
+}
+
+@Singleton
 class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
                                        val persister: TeamsAndReposPersister,
                                        val mongoConnector: MongoConnector,
-                                       val githubApiClientDecorator: GithubApiClientDecorator) {
+                                       val githubApiClientDecorator: GithubApiClientDecorator,
+                                       val timestamper: Timestamper) {
+
 
 
   import BlockingIOExecutionContext._
@@ -29,13 +36,13 @@ class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
     githubApiClientDecorator.githubApiClient(githubConfig.githubApiEnterpriseConfig.apiUrl, githubConfig.githubApiEnterpriseConfig.key)
 
   val enterpriseTeamsRepositoryDataSource: GithubV3RepositoryDataSource =
-    new GithubV3RepositoryDataSource(githubConfig, gitApiEnterpriseClient, persister, isInternal = true)
+    new GithubV3RepositoryDataSource(githubConfig, gitApiEnterpriseClient, persister, isInternal = true, timestamper.timestampF)
 
   val gitOpenClient: GithubApiClient =
     githubApiClientDecorator.githubApiClient(githubConfig.githubApiOpenConfig.apiUrl, githubConfig.githubApiOpenConfig.key)
 
   val openTeamsRepositoryDataSource: GithubV3RepositoryDataSource =
-    new GithubV3RepositoryDataSource(githubConfig, gitOpenClient, persister, isInternal = false)
+    new GithubV3RepositoryDataSource(githubConfig, gitOpenClient, persister, isInternal = false, timestamper.timestampF)
 
   val dataSources = List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)
 
@@ -75,8 +82,8 @@ class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
   }
 
   def mergeRepositoriesForTeam(teamName: String, aTeamAndItsRepositories: Seq[TeamRepositories]) = {
-    aTeamAndItsRepositories.foldLeft(TeamRepositories(teamName, Nil, System.currentTimeMillis())) { case (acc, tr) =>
-      acc.copy(repositories = acc.repositories ++ tr.repositories, updateDate = System.currentTimeMillis())
+    aTeamAndItsRepositories.foldLeft(TeamRepositories(teamName, Nil, timestamper.timestampF())) { case (acc, tr) =>
+      acc.copy(repositories = acc.repositories ++ tr.repositories)
     }
   }
 
@@ -87,7 +94,7 @@ class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
 
       logger.info(s"Combining ${flattened.length} results from ${dataSources.length} sources")
       Future.sequence(flattened.groupBy(_.teamName).map { case (name, teams) =>
-        TeamRepositories(name, teams.flatMap(t => t.repositories).sortBy(_.name), System.currentTimeMillis())
+        TeamRepositories(name, teams.flatMap(t => t.repositories).sortBy(_.name), timestamper.timestampF())
       }.toList.map(tr => persister.update(tr)))
     }.flatMap(identity).andThen {
       case Failure(t) => throw t

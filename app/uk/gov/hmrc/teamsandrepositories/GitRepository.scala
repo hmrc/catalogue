@@ -11,14 +11,13 @@ import uk.gov.hmrc.teamsandrepositories.controller.model.{Repository, Repository
 
 case class GitRepository(name: String,
                          description: String,
-                         url: String,
-                         createdDate: Long,
+                         url: String, createdDate: Long,
                          lastActiveDate: Long,
                          isInternal: Boolean = false,
                          isPrivate: Boolean = false,
                          repoType: RepoType = RepoType.Other,
                          digitalServiceName: Option[String] = None,
-                         updateDate: Long = System.currentTimeMillis())
+                         updateDate: Long)
 
 object GitRepository {
   def toRepository(gitRepository: GitRepository): Repository =
