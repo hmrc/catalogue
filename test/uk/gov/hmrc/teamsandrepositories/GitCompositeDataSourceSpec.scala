@@ -92,14 +92,14 @@ class GitCompositeDataSourceSpec extends FunSpec with Matchers with MockitoSugar
     it("return the combination of all input sources") {
 
       val teamsList1 = List(
-        TeamRepositories("A", List(GitRepository("A_r", "Some Description", "url_A", now, now))),
-        TeamRepositories("B", List(GitRepository("B_r", "Some Description", "url_B", now, now))),
-        TeamRepositories("C", List(GitRepository("C_r", "Some Description", "url_C", now, now))))
+        TeamRepositories("A", List(GitRepository("A_r", "Some Description", "url_A", now, now)), System.currentTimeMillis()),
+        TeamRepositories("B", List(GitRepository("B_r", "Some Description", "url_B", now, now)), System.currentTimeMillis()),
+        TeamRepositories("C", List(GitRepository("C_r", "Some Description", "url_C", now, now)), System.currentTimeMillis()))
 
       val teamsList2 = List(
-        TeamRepositories("D", List(GitRepository("D_r", "Some Description", "url_D", now, now))),
-        TeamRepositories("E", List(GitRepository("E_r", "Some Description", "url_E", now, now))),
-        TeamRepositories("F", List(GitRepository("F_r", "Some Description", "url_F", now, now))))
+        TeamRepositories("D", List(GitRepository("D_r", "Some Description", "url_D", now, now)), System.currentTimeMillis()),
+        TeamRepositories("E", List(GitRepository("E_r", "Some Description", "url_E", now, now)), System.currentTimeMillis()),
+        TeamRepositories("F", List(GitRepository("F_r", "Some Description", "url_F", now, now)), System.currentTimeMillis()))
 
       val dataSource1 = mock[GithubV3RepositoryDataSource]
       when(dataSource1.getTeamRepoMapping).thenReturn(successful(teamsList1))
@@ -126,13 +126,13 @@ class GitCompositeDataSourceSpec extends FunSpec with Matchers with MockitoSugar
       val repoAC = GitRepository("A_C", "Some Description", "url_A_C", now, now)
 
       val teamsList1 = List(
-        TeamRepositories("A", List(repoAC, repoAB)),
-        TeamRepositories("B", List(GitRepository("B_r", "Some Description", "url_B", now, now))),
-        TeamRepositories("C", List(GitRepository("C_r", "Some Description", "url_C", now, now))))
+        TeamRepositories("A", List(repoAC, repoAB), System.currentTimeMillis()),
+        TeamRepositories("B", List(GitRepository("B_r", "Some Description", "url_B", now, now)), System.currentTimeMillis()),
+        TeamRepositories("C", List(GitRepository("C_r", "Some Description", "url_C", now, now)), System.currentTimeMillis()))
 
       val teamsList2 = List(
-        TeamRepositories("A", List(repoAA)),
-        TeamRepositories("D", List(GitRepository("D_r", "Some Description", "url_D", now, now))))
+        TeamRepositories("A", List(repoAA), System.currentTimeMillis()),
+        TeamRepositories("D", List(GitRepository("D_r", "Some Description", "url_D", now, now)), System.currentTimeMillis()))
 
       val dataSource1 = mock[GithubV3RepositoryDataSource]
       when(dataSource1.getTeamRepoMapping).thenReturn(successful(teamsList1))
@@ -161,16 +161,16 @@ class GitCompositeDataSourceSpec extends FunSpec with Matchers with MockitoSugar
       val compositeDataSource = buildCompositeDataSource(List(dataSource1, dataSource2))
 
       val teamRepositoriesInMongo = Seq(
-        TeamRepositories("team-a", Nil),
-        TeamRepositories("team-b", Nil),
-        TeamRepositories("team-c", Nil),
-        TeamRepositories("team-d", Nil)
+        TeamRepositories("team-a", Nil, System.currentTimeMillis()),
+        TeamRepositories("team-b", Nil, System.currentTimeMillis()),
+        TeamRepositories("team-c", Nil, System.currentTimeMillis()),
+        TeamRepositories("team-d", Nil, System.currentTimeMillis())
       )
 
       when(persister.getAllTeamAndRepos).thenReturn(Future.successful(teamRepositoriesInMongo, None))
       when(persister.deleteTeams(ArgumentMatchers.any())).thenReturn(Future.successful(Set("something not important")))
 
-      compositeDataSource.removeOrphanTeamsFromMongo(Seq(TeamRepositories("team-a", Nil), TeamRepositories("team-c", Nil)))
+      compositeDataSource.removeOrphanTeamsFromMongo(Seq(TeamRepositories("team-a", Nil, System.currentTimeMillis()), TeamRepositories("team-c", Nil, System.currentTimeMillis())))
 
       verify(persister, Mockito.timeout(1000)).deleteTeams(Set("team-b", "team-d"))
     }
@@ -178,9 +178,9 @@ class GitCompositeDataSourceSpec extends FunSpec with Matchers with MockitoSugar
     it("should update the timestamp") {
 
       val teamsList = List(
-        TeamRepositories("A", List(GitRepository("A_r", "Some Description", "url_A", now, now))),
-        TeamRepositories("B", List(GitRepository("B_r", "Some Description", "url_B", now, now))),
-        TeamRepositories("C", List(GitRepository("C_r", "Some Description", "url_C", now, now))))
+        TeamRepositories("A", List(GitRepository("A_r", "Some Description", "url_A", now, now)), System.currentTimeMillis()),
+        TeamRepositories("B", List(GitRepository("B_r", "Some Description", "url_B", now, now)), System.currentTimeMillis()),
+        TeamRepositories("C", List(GitRepository("C_r", "Some Description", "url_C", now, now)), System.currentTimeMillis()))
 
       val dataSource = mock[GithubV3RepositoryDataSource]
       when(dataSource.getTeamRepoMapping).thenReturn(successful(teamsList))

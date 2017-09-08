@@ -43,14 +43,14 @@ class CompositeRepositoryDataSourceSpec extends WordSpec with MockitoSugar with 
     "return the combination of all input sources" in {
 
       val teamsList1 = List(
-        TeamRepositories("A", List(GitRepository("A_r", "Some Description", "url_A", now, now))),
-        TeamRepositories("B", List(GitRepository("B_r", "Some Description", "url_B", now, now))),
-        TeamRepositories("C", List(GitRepository("C_r", "Some Description", "url_C", now, now))))
+        TeamRepositories("A", List(GitRepository("A_r", "Some Description", "url_A", now, now)), System.currentTimeMillis()),
+        TeamRepositories("B", List(GitRepository("B_r", "Some Description", "url_B", now, now)), System.currentTimeMillis()),
+        TeamRepositories("C", List(GitRepository("C_r", "Some Description", "url_C", now, now)), System.currentTimeMillis()))
 
       val teamsList2 = List(
-        TeamRepositories("D", List(GitRepository("D_r", "Some Description", "url_D", now, now))),
-        TeamRepositories("E", List(GitRepository("E_r", "Some Description", "url_E", now, now))),
-        TeamRepositories("F", List(GitRepository("F_r", "Some Description", "url_F", now, now))))
+        TeamRepositories("D", List(GitRepository("D_r", "Some Description", "url_D", now, now)), System.currentTimeMillis()),
+        TeamRepositories("E", List(GitRepository("E_r", "Some Description", "url_E", now, now)), System.currentTimeMillis()),
+        TeamRepositories("F", List(GitRepository("F_r", "Some Description", "url_F", now, now)), System.currentTimeMillis()))
 
       val dataSource1 = mock[GithubV3RepositoryDataSource]
       when(dataSource1.getTeamRepoMapping).thenReturn(Future.successful(teamsList1))
@@ -77,13 +77,13 @@ class CompositeRepositoryDataSourceSpec extends WordSpec with MockitoSugar with 
       val repoAC = GitRepository("A_C", "Some Description", "url_A_C", now, now)
 
       val teamsList1 = List(
-        TeamRepositories("A", List(repoAC, repoAB)),
-        TeamRepositories("B", List(GitRepository("B_r", "Some Description", "url_B", now, now))),
-        TeamRepositories("C", List(GitRepository("C_r", "Some Description", "url_C", now, now))))
+        TeamRepositories("A", List(repoAC, repoAB), System.currentTimeMillis()),
+        TeamRepositories("B", List(GitRepository("B_r", "Some Description", "url_B", now, now)), System.currentTimeMillis()),
+        TeamRepositories("C", List(GitRepository("C_r", "Some Description", "url_C", now, now)), System.currentTimeMillis()))
 
       val teamsList2 = List(
-        TeamRepositories("A", List(repoAA)),
-        TeamRepositories("D", List(GitRepository("D_r", "Some Description", "url_D", now, now))))
+        TeamRepositories("A", List(repoAA), System.currentTimeMillis()),
+        TeamRepositories("D", List(GitRepository("D_r", "Some Description", "url_D", now, now)), System.currentTimeMillis()))
 
       val dataSource1 = mock[GithubV3RepositoryDataSource]
       when(dataSource1.getTeamRepoMapping).thenReturn(Future.successful(teamsList1))
@@ -136,7 +136,7 @@ class CompositeRepositoryDataSourceSpec extends WordSpec with MockitoSugar with 
     when(githubClientDecorator.githubApiClient(enterpriseUrl, enterpriseKey)).thenReturn(enterpriseGithubClient)
     when(githubClientDecorator.githubApiClient(openUrl, openKey)).thenReturn(openGithubClient)
 
-    val repositories: Seq[TeamRepositories] = Seq(TeamRepositories("testTeam", Nil))
+    val repositories: Seq[TeamRepositories] = Seq(TeamRepositories("testTeam", Nil, System.currentTimeMillis()))
     when(persister.update(ArgumentMatchers.any())).thenAnswer(new Answer[Future[TeamRepositories]] {
       override def answer(invocation: InvocationOnMock): Future[TeamRepositories] = {
         val args = invocation.getArguments()

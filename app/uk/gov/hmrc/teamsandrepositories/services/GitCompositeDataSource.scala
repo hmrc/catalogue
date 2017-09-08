@@ -75,8 +75,8 @@ class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
   }
 
   def mergeRepositoriesForTeam(teamName: String, aTeamAndItsRepositories: Seq[TeamRepositories]) = {
-    aTeamAndItsRepositories.foldLeft(TeamRepositories(teamName, Nil)) { case (acc, tr) =>
-      acc.copy(repositories = acc.repositories ++ tr.repositories)
+    aTeamAndItsRepositories.foldLeft(TeamRepositories(teamName, Nil, System.currentTimeMillis())) { case (acc, tr) =>
+      acc.copy(repositories = acc.repositories ++ tr.repositories, updateDate = System.currentTimeMillis())
     }
   }
 
@@ -87,7 +87,7 @@ class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
 
       logger.info(s"Combining ${flattened.length} results from ${dataSources.length} sources")
       Future.sequence(flattened.groupBy(_.teamName).map { case (name, teams) =>
-        TeamRepositories(name, teams.flatMap(t => t.repositories).sortBy(_.name))
+        TeamRepositories(name, teams.flatMap(t => t.repositories).sortBy(_.name), System.currentTimeMillis())
       }.toList.map(tr => persister.update(tr)))
     }.flatMap(identity).andThen {
       case Failure(t) => throw t

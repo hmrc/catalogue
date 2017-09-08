@@ -104,7 +104,7 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
         Future.sequence(for {
           repo <- repos; if !repo.fork && !githubConfig.hiddenRepositories.contains(repo.name)
         } yield mapRepository(organisation, repo)).map { (repos: List[GitRepository]) =>
-          TeamRepositories(team.name, repositories = repos)
+          TeamRepositories(team.name, repositories = repos, System.currentTimeMillis())
         }
       }
     }
