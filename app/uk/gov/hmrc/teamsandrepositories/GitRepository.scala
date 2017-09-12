@@ -9,15 +9,7 @@ import play.api.libs.functional.syntax._
 import uk.gov.hmrc.teamsandrepositories.controller.model.{Repository, RepositoryDetails}
 
 
-case class GitRepository(name: String,
-                         description: String,
-                         url: String, createdDate: Long,
-                         lastActiveDate: Long,
-                         isInternal: Boolean = false,
-                         isPrivate: Boolean = false,
-                         repoType: RepoType = RepoType.Other,
-                         digitalServiceName: Option[String] = None,
-                         updateDate: Long)  //!@ can we remove updateDate field from this class?
+case class GitRepository(name: String, description: String, url: String, createdDate: Long, lastActiveDate: Long, isInternal: Boolean = false, isPrivate: Boolean = false, repoType: RepoType = RepoType.Other, digitalServiceName: Option[String] = None) //!@ can we remove updateDate field from this class?
 
 object GitRepository {
   def toRepository(gitRepository: GitRepository): Repository =
@@ -36,7 +28,7 @@ object GitRepository {
         (JsPath \ "repoType").read[RepoType] and
         (JsPath \ "digitalServiceName").readNullable[String] and
         (JsPath \ "updateDate").read[Long]
-      ) (GitRepository.apply _)
+      ) ((name: String, description: String, url: String, createdDate: Long, lastActiveDate: Long, isInternal: Boolean, isPrivate: Boolean, repoType: RepoType, digitalServiceName: Option[String], updateDate: Long) => GitRepository.apply(name, description, url, createdDate, lastActiveDate, isInternal, isPrivate, repoType, digitalServiceName))
 
     val writes = Json.writes[GitRepository]
 
