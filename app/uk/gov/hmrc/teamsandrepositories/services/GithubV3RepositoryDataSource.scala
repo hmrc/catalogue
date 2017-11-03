@@ -95,42 +95,38 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
     }
   }
 
-  private def mapRepository(organisation: GhOrganisation, repository: GhRepository, persistedTeamsF: Future[Seq[TeamRepositories]]): Future[GitRepository] = {
-    val persistedTeamReposF = persistedTeamsF.map(_.find(tr => tr.repositories.exists(r => r.name == repository.name))).map(_.flatMap(_.repositories.find(_.name == repository.name)))
 
-    def getRepositoryDetailsFromGithub = {
-      for {
-        manifest <- withCounter(s"github.$githubName.fileContent") {
-          gh.getFileContent("repository.yaml", repository.name, organisation.login)
-        }
-        maybeManifestDetails = getMaybeManifestDetails(repository.name, manifest)
-        repositoryType <- identifyRepository(repository, organisation, maybeManifestDetails.flatMap(_.repositoryType))
-        maybeDigitalServiceName = maybeManifestDetails.flatMap(_.digitalServiceName)
-      } yield {
-        Logger.debug(s"Mapping repository (${repository.name}) as $repositoryType")
-        GitRepository(repository.name, repository.description, repository.htmlUrl, createdDate = repository.createdDate, lastActiveDate = repository.lastActiveDate, isInternal = this.isInternal, isPrivate = repository.isPrivate, repoType = repositoryType, digitalServiceName = maybeDigitalServiceName, Option(repository.language))
-      }
+
+//  def updateType()
+
+  def getRepositoryDetailsFromGithub(organisation: GhOrganisation, repository: GhRepository): Future[GitRepository] = {
+    for {
+      manifest <- withCounter(s"github.$githubName.fileContent") {gh.getFileContent("repository.yaml", repository.name, organisation.login)}
+      maybeManifestDetails = getMaybeManifestDetails(repository.name, manifest)
+      repositoryType <- identifyRepository(repository, organisation, maybeManifestDetails.flatMap(_.repositoryType))
+      maybeDigitalServiceName = maybeManifestDetails.flatMap(_.digitalServiceName)
+    } yield {
+      Logger.debug(s"Mapping repository (${repository.name}) as $repositoryType")
+      buildGitRepository(repository, repositoryType, maybeDigitalServiceName)
     }
-
-    /**
-      * This exists so that we don't hit github to figure out the type of the repo and digital service name (if we already have that info in the database)
-     */
-    def getRepositoryDetailsOptimised(persistedRepository: GitRepository) = {
-      Logger.debug(s"Mapping repository (${repository.name}) as ${persistedRepository.repoType} from previously persisted repo")
-      Future.successful(GitRepository(name = repository.name,
-        description = repository.description,
-        url = repository.htmlUrl,
-        createdDate = repository.createdDate,
-        lastActiveDate = repository.lastActiveDate,
-        isInternal = persistedRepository.isInternal,
-        isPrivate = repository.isPrivate,
-        repoType = persistedRepository.repoType,
-        digitalServiceName = persistedRepository.digitalServiceName,
-        language = persistedRepository.language))
-    }
-
-    persistedTeamReposF.flatMap(maybeRepository => maybeRepository.fold(getRepositoryDetailsFromGithub)(getRepositoryDetailsOptimised))
   }
+
+  def repositoryUpdated(repository: GhRepository, persistedRepository: GitRepository): Boolean =
+    repository.lastActiveDate > persistedRepository.lastSuccessfulScheduledUpdate.getOrElse(0l)
+
+  private def mapRepository(organisation: GhOrganisation, repository: GhRepository, persistedTeamsF: Future[Seq[TeamRepositories]]): Future[GitRepository] = {
+    val eventualMaybePersistedRepository = persistedTeamsF.map(_.find(tr => tr.repositories.exists(r => r.name == repository.name))).map(_.flatMap(_.repositories.find(_.name == repository.name)))
+
+    eventualMaybePersistedRepository.flatMap {
+      case Some(persistedRepository) if !repositoryUpdated(repository, persistedRepository)  =>
+        Logger.debug(s"Mapping repository (${repository.name}) as ${persistedRepository.repoType} from previously persisted repo")
+        Future.successful(buildGitRepositoryUsingPreviouslyPersistedOne(repository, persistedRepository))
+
+      case None | _ =>
+        getRepositoryDetailsFromGithub(organisation, repository)
+    }
+  }
+
 
   private def identifyRepository(repository: GhRepository, organisation: GhOrganisation, maybeRepoType: Option[RepoType]): Future[RepoType] =
     maybeRepoType match {
@@ -225,6 +221,15 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
 
   private def hasPath(organisation: GhOrganisation, repo: GhRepository, path: String) =
     withCounter(s"github.$githubName.containsContent") { gh.repoContainsContent(path, repo.name, organisation.login) }
+
+  def buildGitRepositoryUsingPreviouslyPersistedOne(repository: GhRepository, persistedRepository: GitRepository) = {
+    GitRepository(name = repository.name, description = repository.description, url = repository.htmlUrl, createdDate = repository.createdDate, lastActiveDate = repository.lastActiveDate, isInternal = persistedRepository.isInternal, isPrivate = repository.isPrivate, repoType = persistedRepository.repoType, digitalServiceName = persistedRepository.digitalServiceName, language = persistedRepository.language, None)
+  }
+
+  def buildGitRepository(repository: GhRepository, repositoryType: RepoType, maybeDigitalServiceName: Option[String]): GitRepository = {
+    GitRepository(repository.name, description = repository.description, url = repository.htmlUrl, createdDate = repository.createdDate, lastActiveDate = repository.lastActiveDate, isInternal = this.isInternal, isPrivate = repository.isPrivate, repoType = repositoryType, digitalServiceName = maybeDigitalServiceName, language = Option(repository.language), None)
+  }
+
 
 
   def withCounter[T](name: String)(f: Future[T]) = {
