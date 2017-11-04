@@ -65,7 +65,7 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
       Future.sequence(
         orgs.map(org => withCounter(s"github.$githubName.teams") { gh.getTeamsForOrganisation(org.login) } map(teams => (org, teams)))
       ).map(_.map { case (ghOrg, ghTeams) =>
-        val nonHiddenGhTeams = ghTeams.filter(team => !githubConfig.hiddenTeams.contains(team.name))
+        val nonHiddenGhTeams = ghTeams.filter(team => !githubConfig.hiddenTeams.contains(team.name)) //!@
         nonHiddenGhTeams.map(ghTeam => TeamAndOrgAndDataSource(ghOrg, ghTeam, this))
 
       }).map(_.flatten) recover {
@@ -83,7 +83,7 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
         Future.sequence(for {
           repo <- repos; if !repo.fork && !githubConfig.hiddenRepositories.contains(repo.name)
         } yield {
-          mapRepository(organisation, repo, persistedTeams)
+          mapRepository(organisation, team, repo, persistedTeams)
         }).map { (repos: List[GitRepository]) =>
           TeamRepositories(team.name, repositories = repos, timestampF())
         }
@@ -112,10 +112,11 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
   }
 
   def repositoryUpdated(repository: GhRepository, persistedRepository: GitRepository): Boolean =
-    repository.lastActiveDate > persistedRepository.lastSuccessfulScheduledUpdate.getOrElse(0l)
+//    repository.lastActiveDate > persistedRepository.lastSuccessfulScheduledUpdate.getOrElse(0l)
+    persistedRepository.lastSuccessfulScheduledUpdate.map(_ < repository.lastActiveDate).getOrElse(true)
 
-  private def mapRepository(organisation: GhOrganisation, repository: GhRepository, persistedTeamsF: Future[Seq[TeamRepositories]]): Future[GitRepository] = {
-    val eventualMaybePersistedRepository = persistedTeamsF.map(_.find(tr => tr.repositories.exists(r => r.name == repository.name))).map(_.flatMap(_.repositories.find(_.name == repository.name)))
+  private def mapRepository(organisation: GhOrganisation, team: GhTeam, repository: GhRepository, persistedTeamsF: Future[Seq[TeamRepositories]]): Future[GitRepository] = {
+    val eventualMaybePersistedRepository = persistedTeamsF.map(_.find(tr => tr.repositories.exists(r => r.name == repository.name && team.name == tr.teamName))).map(_.flatMap(_.repositories.find(_.name == repository.name)))
 
     eventualMaybePersistedRepository.flatMap {
       case Some(persistedRepository) if !repositoryUpdated(repository, persistedRepository)  =>
@@ -223,11 +224,31 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
     withCounter(s"github.$githubName.containsContent") { gh.repoContainsContent(path, repo.name, organisation.login) }
 
   def buildGitRepositoryUsingPreviouslyPersistedOne(repository: GhRepository, persistedRepository: GitRepository) = {
-    GitRepository(name = repository.name, description = repository.description, url = repository.htmlUrl, createdDate = repository.createdDate, lastActiveDate = repository.lastActiveDate, isInternal = persistedRepository.isInternal, isPrivate = repository.isPrivate, repoType = persistedRepository.repoType, digitalServiceName = persistedRepository.digitalServiceName, language = persistedRepository.language, None)
+    GitRepository(name = repository.name,
+      description = repository.description,
+      url = repository.htmlUrl,
+      createdDate = repository.createdDate,
+      lastActiveDate = repository.lastActiveDate,
+      isInternal = persistedRepository.isInternal,
+      isPrivate = repository.isPrivate,
+      repoType = persistedRepository.repoType,
+      digitalServiceName = persistedRepository.digitalServiceName,
+      language = persistedRepository.language,
+      persistedRepository.lastSuccessfulScheduledUpdate)
   }
 
   def buildGitRepository(repository: GhRepository, repositoryType: RepoType, maybeDigitalServiceName: Option[String]): GitRepository = {
-    GitRepository(repository.name, description = repository.description, url = repository.htmlUrl, createdDate = repository.createdDate, lastActiveDate = repository.lastActiveDate, isInternal = this.isInternal, isPrivate = repository.isPrivate, repoType = repositoryType, digitalServiceName = maybeDigitalServiceName, language = Option(repository.language), None)
+    GitRepository(repository.name,
+      description = repository.description,
+      url = repository.htmlUrl,
+      createdDate = repository.createdDate,
+      lastActiveDate = repository.lastActiveDate,
+      isInternal = this.isInternal,
+      isPrivate = repository.isPrivate,
+      repoType = repositoryType,
+      digitalServiceName = maybeDigitalServiceName,
+      language = Option(repository.language),
+      lastSuccessfulScheduledUpdate = Some(timestampF()))
   }
 
 
