@@ -400,8 +400,8 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
             when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(org)))
             when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(team)))
 
-            val lastActiveDate: Long = 1234l
-            val previousLastSuccessfulScheduledUpdate = Some(lastActiveDate - 1)
+            val lastActiveDate: Long = 10000000000l
+            val previousLastSuccessfulScheduledUpdate = Some(lastActiveDate - dataSource.clockErrorMargin - 1)
 
             when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(GhRepository("repo-1", "some description", 1, "url_A", false, now, lastActiveDate, true, null))))
 

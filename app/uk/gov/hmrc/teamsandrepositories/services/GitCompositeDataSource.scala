@@ -1,5 +1,7 @@
 package uk.gov.hmrc.teamsandrepositories.services
 
+import java.time.Instant
+
 import com.google.inject.{Inject, Singleton}
 import com.kenshoo.play.metrics.Metrics
 import play.api.Logger
@@ -13,7 +15,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class Timestamper {
-   def timestampF() = System.currentTimeMillis()
+   def timestampF() = Instant.now().toEpochMilli
 }
 
 @Singleton

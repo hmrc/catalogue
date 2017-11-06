@@ -28,6 +28,7 @@ import uk.gov.hmrc.teamsandrepositories.persitence.model.TeamRepositories
 import uk.gov.hmrc.teamsandrepositories.{GitRepository, RepoType}
 
 import scala.concurrent.Future
+import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
 case class TeamNamesTuple(ghNames: Option[Future[Set[String]]] = None, mongoNames: Option[Future[Set[String]]] = None)
@@ -65,7 +66,7 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
       Future.sequence(
         orgs.map(org => withCounter(s"github.$githubName.teams") { gh.getTeamsForOrganisation(org.login) } map(teams => (org, teams)))
       ).map(_.map { case (ghOrg, ghTeams) =>
-        val nonHiddenGhTeams = ghTeams.filter(team => !githubConfig.hiddenTeams.contains(team.name)) //!@
+        val nonHiddenGhTeams = ghTeams.filter(team => !githubConfig.hiddenTeams.contains(team.name))
         nonHiddenGhTeams.map(ghTeam => TeamAndOrgAndDataSource(ghOrg, ghTeam, this))
 
       }).map(_.flatten) recover {
@@ -97,8 +98,6 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
 
 
 
-//  def updateType()
-
   def getRepositoryDetailsFromGithub(organisation: GhOrganisation, repository: GhRepository): Future[GitRepository] = {
     for {
       manifest <- withCounter(s"github.$githubName.fileContent") {gh.getFileContent("repository.yaml", repository.name, organisation.login)}
@@ -112,8 +111,12 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
   }
 
 
-  def repositoryUpdated(repository: GhRepository, persistedRepository: GitRepository): Boolean =
-    persistedRepository.lastSuccessfulScheduledUpdate.map(_ < repository.lastActiveDate).getOrElse(true)
+  import scala.concurrent.duration._
+  val clockErrorMargin = (5 minutes).toMillis
+
+  def repositoryUpdated(repository: GhRepository, persistedRepository: GitRepository): Boolean = {
+    persistedRepository.lastSuccessfulScheduledUpdate.map(_ < repository.lastActiveDate - clockErrorMargin).getOrElse(true)
+  }
 
   private def mapRepository(organisation: GhOrganisation, team: GhTeam, repository: GhRepository, persistedTeamsF: Future[Seq[TeamRepositories]]): Future[GitRepository] = {
     val eventualMaybePersistedRepository = persistedTeamsF.map(_.find(tr => tr.repositories.exists(r => r.name == repository.name && team.name == tr.teamName))).map(_.flatMap(_.repositories.find(_.name == repository.name)))
@@ -123,7 +126,7 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
         Logger.debug(s"Mapping repository (${repository.name}) as ${persistedRepository.repoType} from previously persisted repo")
         Future.successful(buildGitRepositoryUsingPreviouslyPersistedOne(repository, persistedRepository))
 
-      case None | _ =>
+      case _ =>
         getRepositoryDetailsFromGithub(organisation, repository)
     }
   }
