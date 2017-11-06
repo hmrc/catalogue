@@ -364,6 +364,99 @@ class GithubV3RepositoryDataSourceSpec extends WordSpec with ScalaFutures with M
       repositories shouldBe TeamRepositories("A", List(GitRepository("Pete_r", "some description", "url_A", now, now, isPrivate = true, repoType = RepoType.Other, digitalServiceName = None, lastSuccessfulScheduledUpdate = Some(timestampF()))), timestampF())
     }
 
+
+    "github api for determining the repo type" should {
+      val org = GhOrganisation("HMRC", 1)
+      val team = GhTeam("A", 1)
+      "not be called" when {
+
+
+        "a repository has had no updates/pushes since LastSuccessfulScheduledUpdate" should {
+          "also repo type and digital service name should be copied from the previously persisted record)" in new Setup {
+            when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(org)))
+            when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(team)))
+
+            val previousLastSuccessfulScheduledUpdate: Long = 1234l
+            val lastActiveDate: Long = 1234l
+            when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(GhRepository("repo-1", "some description", 1, "url_A", false, now, lastActiveDate, true, null))))
+
+            val persistedTeamRepositories = TeamRepositories("A", List(GitRepository("repo-1", "some description", "url_A", now, now, true, true, RepoType.Library, Some("Some Digital Service"), None, Some(previousLastSuccessfulScheduledUpdate))), now)
+
+            val repositories = dataSource.mapTeam(org, team, persistedTeams = Future.successful(Seq(persistedTeamRepositories))).futureValue
+
+            //verify
+            repositories shouldBe TeamRepositories("A", List(GitRepository("repo-1", "some description", "url_A", now, lastActiveDate, isInternal = false, isPrivate = true, repoType = RepoType.Library, digitalServiceName = Some("Some Digital Service"), lastSuccessfulScheduledUpdate = Some(previousLastSuccessfulScheduledUpdate))), timestampF())
+            verify(githubClient, never()).getFileContent(any(), any(), any())(any())
+            verify(githubClient, never()).repoContainsContent(any(), any(), any())(any())
+          }
+        }
+
+      }
+
+
+      "be called" when {
+        "the repository has had a recent activity after the LastSuccessfulScheduledUpdate" should {
+          "also repo type and digital service name should be obtained from github" in new Setup {
+            when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(org)))
+            when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(team)))
+
+            val lastActiveDate: Long = 1234l
+            val previousLastSuccessfulScheduledUpdate = Some(lastActiveDate - 1)
+
+            when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(GhRepository("repo-1", "some description", 1, "url_A", false, now, lastActiveDate, true, null))))
+
+            private val manifestYaml =
+              """
+                |digital-service: service-abcd
+                |type: library
+              """.stripMargin
+
+            when(githubClient.getFileContent(same("repository.yaml"), same("repo-1"), same("HMRC"))(same(ec))).thenReturn(Future.successful(Some(manifestYaml)))
+
+            val persistedTeamRepositories = TeamRepositories("A", List(GitRepository("repo-1", "some description", "url_A", now, now, true, true, RepoType.Library, Some("Some Digital Service"), None, previousLastSuccessfulScheduledUpdate)), now)
+
+            val repositories = dataSource.mapTeam(org, team, persistedTeams = Future.successful(Seq(persistedTeamRepositories))).futureValue
+
+            //verify
+            repositories shouldBe TeamRepositories("A", List(GitRepository("repo-1", "some description", "url_A", now, lastActiveDate, isInternal = false, isPrivate = true, repoType = RepoType.Library, digitalServiceName = Some("service-abcd"), lastSuccessfulScheduledUpdate = Some(now))), timestampF())
+            verify(githubClient, times(1)).getFileContent("repository.yaml", "repo-1", "HMRC")(ec)
+            verify(githubClient, never()).repoContainsContent(any(), any(), any())(any())
+          }
+        }
+      }
+
+      "the repository hasn't had LastSuccessfulScheduledUpdate timestamp populated" should {
+        "also repo type and digital service name should be obtained from github" in new Setup {
+          when(githubClient.getOrganisations(ec)).thenReturn(Future.successful(List(org)))
+          when(githubClient.getTeamsForOrganisation("HMRC")(ec)).thenReturn(Future.successful(List(team)))
+
+          val lastActiveDate: Long = 1234l
+          val previousLastSuccessfulScheduledUpdate = Option.empty[Long]
+
+          when(githubClient.getReposForTeam(1)(ec)).thenReturn(Future.successful(List(GhRepository("repo-1", "some description", 1, "url_A", false, now, lastActiveDate, true, null))))
+
+          private val manifestYaml =
+            """
+              |digital-service: service-abcd
+              |type: library
+            """.stripMargin
+          when(githubClient.getFileContent(same("repository.yaml"), same("repo-1"), same("HMRC"))(same(ec))).thenReturn(Future.successful(Some(manifestYaml)))
+
+          val persistedTeamRepositories = TeamRepositories("A", List(GitRepository("repo-1", "some description", "url_A", now, now, true, true, RepoType.Library, Some("Some Digital Service"), None, previousLastSuccessfulScheduledUpdate)), now)
+
+          val repositories = dataSource.mapTeam(org, team, persistedTeams = Future.successful(Seq(persistedTeamRepositories))).futureValue
+
+          //verify
+          repositories shouldBe TeamRepositories("A", List(GitRepository("repo-1", "some description", "url_A", now, lastActiveDate, isInternal = false, isPrivate = true, repoType = RepoType.Library, digitalServiceName = Some("service-abcd"), lastSuccessfulScheduledUpdate = Some(now))), timestampF())
+          verify(githubClient, times(1)).getFileContent("repository.yaml", "repo-1", "HMRC")(ec)
+          verify(githubClient, never()).repoContainsContent(any(), any(), any())(any())
+        }
+      }
+
+
+
+    }
+
     "Retry up to 5 times in the event of a failed api call" in new Setup {
 
       private val org = GhOrganisation("HMRC", 1)

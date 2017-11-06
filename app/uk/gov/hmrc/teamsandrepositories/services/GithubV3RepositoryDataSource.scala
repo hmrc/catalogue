@@ -111,8 +111,8 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
     }
   }
 
+
   def repositoryUpdated(repository: GhRepository, persistedRepository: GitRepository): Boolean =
-//    repository.lastActiveDate > persistedRepository.lastSuccessfulScheduledUpdate.getOrElse(0l)
     persistedRepository.lastSuccessfulScheduledUpdate.map(_ < repository.lastActiveDate).getOrElse(true)
 
   private def mapRepository(organisation: GhOrganisation, team: GhTeam, repository: GhRepository, persistedTeamsF: Future[Seq[TeamRepositories]]): Future[GitRepository] = {
@@ -229,7 +229,7 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
       url = repository.htmlUrl,
       createdDate = repository.createdDate,
       lastActiveDate = repository.lastActiveDate,
-      isInternal = persistedRepository.isInternal,
+      isInternal = this.isInternal,
       isPrivate = repository.isPrivate,
       repoType = persistedRepository.repoType,
       digitalServiceName = persistedRepository.digitalServiceName,
