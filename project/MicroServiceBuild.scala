@@ -33,8 +33,9 @@ private object AppDependencies {
     "org.yaml" % "snakeyaml" % "1.17",
     "org.apache.httpcomponents" % "httpcore" % "4.3.2",
     "org.apache.httpcomponents" % "httpclient" % "4.3.5",
-    "uk.gov.hmrc" %% "mongo-lock" % "5.0.0",
-    "uk.gov.hmrc" %% "play-reactivemongo" % playReactivemongoVersion
+    "uk.gov.hmrc" %% "mongo-lock" % "999",
+    "uk.gov.hmrc" %% "play-reactivemongo" % playReactivemongoVersion,
+    "uk.gov.hmrc" %% "reactivemongo" % "999"
   )
 
   trait TestDependencies {
@@ -49,7 +50,7 @@ private object AppDependencies {
         "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.0" % scope,
         "org.pegdown" % "pegdown" % "1.4.2" % scope,
         "com.typesafe.play" %% "play-test" % current % scope,
-        "uk.gov.hmrc" %% "reactivemongo-test" % "3.0.0" % scope,
+        "uk.gov.hmrc" %% "reactivemongo-test" % "999" % scope,
         "com.github.tomakehurst" % "wiremock" % "1.52" % scope,
         "org.mockito" % "mockito-core" % "2.3.5" % scope
       )

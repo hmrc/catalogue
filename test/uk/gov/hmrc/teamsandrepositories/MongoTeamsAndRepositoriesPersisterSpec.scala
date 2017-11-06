@@ -21,7 +21,7 @@ class MongoTeamsAndRepositoriesPersisterSpec extends UnitSpec with LoneElement w
   implicit override lazy val app: Application =
     new GuiceApplicationBuilder()
       .disable(classOf[Module])
-      .configure(Map("mongodb.uri" -> "mongodb://localhost:27017/test-teams-and-repositories?sslEnabled=true&sslAllowsInvalidCert=true&authMode=x509")).build()
+      .configure(Map("mongodb.uri" -> "mongodb://emailAddress=testclient@testclient.com,CN=127.0.0.1,OU=TEST_CLIENT,O=TEST_CLIENT,L=LONDON,ST=LONDON,C=UK@localhost:27017/test-teams-and-repositories?sslEnabled=true&sslAllowsInvalidCert=true&authMode=x509")).build()
 
   val mongoTeamsAndReposPersister = app.injector.instanceOf(classOf[MongoTeamsAndRepositoriesPersister])
 
