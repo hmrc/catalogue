@@ -116,9 +116,6 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
   private def mapRepository(organisation: GhOrganisation, team: GhTeam, repository: GhRepository, persistedTeamsF: Future[Seq[TeamRepositories]], fullRefreshWithHighApiCall: Boolean): Future[GitRepository] = {
     val eventualMaybePersistedRepository = persistedTeamsF.map(_.find(tr => tr.repositories.exists(r => r.name == repository.name && team.name == tr.teamName))).map(_.flatMap(_.repositories.find(_.name == repository.name)))
 
-//    //!@
-//    if (true)
-//      throw new APIRateLimitExceededException(new RuntimeException)
     eventualMaybePersistedRepository.flatMap {
       case Some(persistedRepository) if !fullRefreshWithHighApiCall =>
         Logger.debug(s"Mapping repository (${repository.name}) as ${persistedRepository.repoType} from previously persisted repo")

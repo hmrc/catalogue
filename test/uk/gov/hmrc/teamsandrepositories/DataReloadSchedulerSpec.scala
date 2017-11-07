@@ -93,9 +93,4 @@ class DataReloadSchedulerSpec extends PlaySpec with MockitoSugar with Results wi
     }
   }
 
-  override protected def afterAll(): Unit = {
-//    app.actorSystem.terminate()
-    app.stop()
-    super.afterAll()
-  }
 }
