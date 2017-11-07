@@ -20,7 +20,7 @@ import com.codahale.metrics.MetricRegistry
 import org.yaml.snakeyaml.Yaml
 import play.api.Logger
 import play.api.libs.json._
-import uk.gov.hmrc.githubclient.{GhOrganisation, GhRepository, GhTeam, GithubApiClient}
+import uk.gov.hmrc.githubclient._
 import uk.gov.hmrc.teamsandrepositories.RepoType._
 import uk.gov.hmrc.teamsandrepositories.config.GithubConfig
 import uk.gov.hmrc.teamsandrepositories.helpers.RetryStrategy._
@@ -77,14 +77,15 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
     }
   }
 
-  def mapTeam(organisation: GhOrganisation, team: GhTeam, persistedTeams: Future[Seq[TeamRepositories]]): Future[TeamRepositories] = {
+  //!@ remove the default value for fullRefreshWithHighApiCall
+  def mapTeam(organisation: GhOrganisation, team: GhTeam, persistedTeams: Future[Seq[TeamRepositories]], fullRefreshWithHighApiCall: Boolean = false): Future[TeamRepositories] = {
     Logger.debug(s"Mapping team (${team.name})")
     exponentialRetry(retries, initialDuration) {
       withCounter(s"github.$githubName.repos") { gh.getReposForTeam(team.id) } flatMap { repos =>
         Future.sequence(for {
           repo <- repos; if !repo.fork && !githubConfig.hiddenRepositories.contains(repo.name)
         } yield {
-          mapRepository(organisation, team, repo, persistedTeams)
+          mapRepository(organisation, team, repo, persistedTeams, fullRefreshWithHighApiCall)
         }).map { (repos: List[GitRepository]) =>
           TeamRepositories(team.name, repositories = repos, timestampF())
         }
@@ -111,21 +112,19 @@ class GithubV3RepositoryDataSource(githubConfig: GithubConfig,
   }
 
 
-  import scala.concurrent.duration._
-  val clockErrorMargin = (5 minutes).toMillis
 
-  def repositoryUpdated(repository: GhRepository, persistedRepository: GitRepository): Boolean = {
-    persistedRepository.lastSuccessfulScheduledUpdate.map(_ < repository.lastActiveDate - clockErrorMargin).getOrElse(true)
-  }
-
-  private def mapRepository(organisation: GhOrganisation, team: GhTeam, repository: GhRepository, persistedTeamsF: Future[Seq[TeamRepositories]]): Future[GitRepository] = {
+  private def mapRepository(organisation: GhOrganisation, team: GhTeam, repository: GhRepository, persistedTeamsF: Future[Seq[TeamRepositories]], fullRefreshWithHighApiCall: Boolean): Future[GitRepository] = {
     val eventualMaybePersistedRepository = persistedTeamsF.map(_.find(tr => tr.repositories.exists(r => r.name == repository.name && team.name == tr.teamName))).map(_.flatMap(_.repositories.find(_.name == repository.name)))
 
+//    //!@
+//    if (true)
+//      throw new APIRateLimitExceededException(new RuntimeException)
     eventualMaybePersistedRepository.flatMap {
-      case Some(persistedRepository) if !repositoryUpdated(repository, persistedRepository)  =>
+      case Some(persistedRepository) if !fullRefreshWithHighApiCall =>
         Logger.debug(s"Mapping repository (${repository.name}) as ${persistedRepository.repoType} from previously persisted repo")
-        Future.successful(buildGitRepositoryUsingPreviouslyPersistedOne(repository, persistedRepository))
-
+        persistedRepository.lastSuccessfulScheduledUpdate.fold(getRepositoryDetailsFromGithub(organisation, repository)) { _ =>
+          Future.successful(buildGitRepositoryUsingPreviouslyPersistedOne(repository, persistedRepository))
+        }
       case _ =>
         getRepositoryDetailsFromGithub(organisation, repository)
     }

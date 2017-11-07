@@ -43,7 +43,7 @@ class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
   val dataSources = List(enterpriseTeamsRepositoryDataSource, openTeamsRepositoryDataSource)
 
 
-  def persistTeamRepoMapping(implicit ec: ExecutionContext): Future[Seq[TeamRepositories]] = {
+  def persistTeamRepoMapping(fullRefreshWithHighApiCall: Boolean = false)(implicit ec: ExecutionContext): Future[Seq[TeamRepositories]] = {
     val persistedTeams: Future[Seq[TeamRepositories]] = persister.getAllTeamAndRepos
 
     val sortedByUpdateDate = groupAndOrderTeamsAndTheirDataSources(persistedTeams)
@@ -53,7 +53,7 @@ class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
       Logger.debug("^^^^^^ TEAM NAMES ^^^^^^")
 
       Future.sequence(ts.map { aTeam: OneTeamAndItsDataSources =>
-        getAllRepositoriesForTeam(aTeam, persistedTeams).map(mergeRepositoriesForTeam(aTeam.teamName, _)).flatMap(persister.update)
+        getAllRepositoriesForTeam(aTeam, persistedTeams, fullRefreshWithHighApiCall).map(mergeRepositoriesForTeam(aTeam.teamName, _)).flatMap(persister.update)
       })
     }.map(_.toSeq) recover {
       case e =>
@@ -62,9 +62,9 @@ class GitCompositeDataSource @Inject()(val githubConfig: GithubConfig,
     }
   }
 
-  private def getAllRepositoriesForTeam(aTeam: OneTeamAndItsDataSources, persistedTeams: Future[Seq[TeamRepositories]])(implicit ec: ExecutionContext): Future[Seq[TeamRepositories]] = {
+  private def getAllRepositoriesForTeam(aTeam: OneTeamAndItsDataSources, persistedTeams: Future[Seq[TeamRepositories]], fullRefreshWithHighApiCall: Boolean)(implicit ec: ExecutionContext): Future[Seq[TeamRepositories]] = {
     Future.sequence(aTeam.teamAndDataSources.map { teamAndDataSource =>
-      teamAndDataSource.dataSource.mapTeam(teamAndDataSource.organisation, teamAndDataSource.team, persistedTeams)
+      teamAndDataSource.dataSource.mapTeam(teamAndDataSource.organisation, teamAndDataSource.team, persistedTeams, fullRefreshWithHighApiCall)
     })
   }
 

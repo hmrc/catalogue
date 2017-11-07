@@ -138,15 +138,15 @@ class CompositeRepositoryDataSourceSpec extends WordSpec with MockitoSugar with 
         TeamAndOrgAndDataSource(ghOrganisation, ghTeamB, dataSource)
       )))
       when(noEffectDataSource.getTeamsWithOrgAndDataSourceDetails).thenReturn(Future.successful(Nil))
-      when(dataSource.mapTeam(eqTo(ghOrganisation), eqTo(ghTeamA), any())).thenReturn(Future.successful(teamARepositories))
-      when(dataSource.mapTeam(eqTo(ghOrganisation), eqTo(ghTeamB), any())).thenReturn(Future.successful(teamBRepositories))
+      when(dataSource.mapTeam(eqTo(ghOrganisation), eqTo(ghTeamA), any(), any())).thenReturn(Future.successful(teamARepositories))
+      when(dataSource.mapTeam(eqTo(ghOrganisation), eqTo(ghTeamB), any(), any())).thenReturn(Future.successful(teamBRepositories))
 
       val compositeDataSource = buildCompositeDataSource(dataSource, noEffectDataSource, Nil, mockMetrics)
 
-      compositeDataSource.persistTeamRepoMapping.futureValue
+      compositeDataSource.persistTeamRepoMapping().futureValue
 
-      verify(dataSource).mapTeam(eqTo(ghOrganisation), eqTo(ghTeamA), any())
-      verify(dataSource).mapTeam(eqTo(ghOrganisation), eqTo(ghTeamB), any())
+      verify(dataSource).mapTeam(eqTo(ghOrganisation), eqTo(ghTeamA), any(), any())
+      verify(dataSource).mapTeam(eqTo(ghOrganisation), eqTo(ghTeamB), any(), any())
       verify(compositeDataSource.persister).update(teamARepositories)
       verify(compositeDataSource.persister).update(teamBRepositories)
     }
@@ -185,15 +185,15 @@ class CompositeRepositoryDataSourceSpec extends WordSpec with MockitoSugar with 
       )))
 
 
-      when(dataSource1.mapTeam(eqTo(ghOrganisation1), eqTo(ghTeamAInDataSource1), any())).thenReturn(Future.successful(teamARepositoriesInDataSource1))
-      when(dataSource2.mapTeam(eqTo(ghOrganisation2), eqTo(ghTeamAInDataSource2), any())).thenReturn(Future.successful(teamARepositoriesInDataSource2))
+      when(dataSource1.mapTeam(eqTo(ghOrganisation1), eqTo(ghTeamAInDataSource1), any(), any())).thenReturn(Future.successful(teamARepositoriesInDataSource1))
+      when(dataSource2.mapTeam(eqTo(ghOrganisation2), eqTo(ghTeamAInDataSource2), any(), any())).thenReturn(Future.successful(teamARepositoriesInDataSource2))
 
       val compositeDataSource = buildCompositeDataSource(dataSource1, dataSource2, Nil, mockMetrics)
 
-      compositeDataSource.persistTeamRepoMapping.futureValue
+      compositeDataSource.persistTeamRepoMapping().futureValue
 
-      verify(dataSource1).mapTeam(eqTo(ghOrganisation1), eqTo(ghTeamAInDataSource1), any())
-      verify(dataSource2).mapTeam(eqTo(ghOrganisation2), eqTo(ghTeamAInDataSource2), any())
+      verify(dataSource1).mapTeam(eqTo(ghOrganisation1), eqTo(ghTeamAInDataSource1), any(), any())
+      verify(dataSource2).mapTeam(eqTo(ghOrganisation2), eqTo(ghTeamAInDataSource2), any(), any())
 
       val mergedRepositories = (teamARepositoriesInDataSource1.repositories ++ teamARepositoriesInDataSource2.repositories).sortBy(_.name)
       verify(compositeDataSource.persister).update(
@@ -230,10 +230,10 @@ class CompositeRepositoryDataSourceSpec extends WordSpec with MockitoSugar with 
       )))
       when(noEffectDataSource.getTeamsWithOrgAndDataSourceDetails).thenReturn(Future.successful(Nil))
 
-      when(dataSource.mapTeam(eqTo(ghOrganisation), eqTo(ghTeamA), any())).thenReturn(Future.successful(teamARepositories))
-      when(dataSource.mapTeam(eqTo(ghOrganisation), eqTo(ghTeamB), any())).thenReturn(Future.successful(teamBRepositories))
-      when(dataSource.mapTeam(eqTo(ghOrganisation), eqTo(ghTeamC), any())).thenReturn(Future.successful(teamCRepositories))
-      when(dataSource.mapTeam(eqTo(ghOrganisation), eqTo(ghTeamD), any())).thenReturn(Future.successful(teamDRepositories))
+      when(dataSource.mapTeam(eqTo(ghOrganisation), eqTo(ghTeamA), any(), any())).thenReturn(Future.successful(teamARepositories))
+      when(dataSource.mapTeam(eqTo(ghOrganisation), eqTo(ghTeamB), any(), any())).thenReturn(Future.successful(teamBRepositories))
+      when(dataSource.mapTeam(eqTo(ghOrganisation), eqTo(ghTeamC), any(), any())).thenReturn(Future.successful(teamCRepositories))
+      when(dataSource.mapTeam(eqTo(ghOrganisation), eqTo(ghTeamD), any(), any())).thenReturn(Future.successful(teamDRepositories))
 
 
       // N.B teamD has not been processed (does not exist in db)
@@ -247,12 +247,12 @@ class CompositeRepositoryDataSourceSpec extends WordSpec with MockitoSugar with 
       val mappingTeamsOrder = Mockito.inOrder(dataSource)
       val persistenceOrder = Mockito.inOrder(compositeDataSource.persister)
 
-      compositeDataSource.persistTeamRepoMapping.futureValue
+      compositeDataSource.persistTeamRepoMapping().futureValue
 
-      mappingTeamsOrder.verify(dataSource).mapTeam(eqTo(ghOrganisation), eqTo(ghTeamD), any())
-      mappingTeamsOrder.verify(dataSource).mapTeam(eqTo(ghOrganisation), eqTo(ghTeamA), any())
-      mappingTeamsOrder.verify(dataSource).mapTeam(eqTo(ghOrganisation), eqTo(ghTeamC), any())
-      mappingTeamsOrder.verify(dataSource).mapTeam(eqTo(ghOrganisation), eqTo(ghTeamB), any())
+      mappingTeamsOrder.verify(dataSource).mapTeam(eqTo(ghOrganisation), eqTo(ghTeamD), any(), any())
+      mappingTeamsOrder.verify(dataSource).mapTeam(eqTo(ghOrganisation), eqTo(ghTeamA), any(), any())
+      mappingTeamsOrder.verify(dataSource).mapTeam(eqTo(ghOrganisation), eqTo(ghTeamC), any(), any())
+      mappingTeamsOrder.verify(dataSource).mapTeam(eqTo(ghOrganisation), eqTo(ghTeamB), any(), any())
 
       persistenceOrder.verify(compositeDataSource.persister).update(teamDRepositories)
       persistenceOrder.verify(compositeDataSource.persister).update(teamARepositories)

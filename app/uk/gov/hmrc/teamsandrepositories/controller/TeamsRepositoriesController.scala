@@ -160,7 +160,7 @@ class TeamsRepositoriesController @Inject()(dataReloadScheduler: DataReloadSched
   }
 
   def reloadCache() = Action {
-    dataReloadScheduler.reload
+    dataReloadScheduler.reload(false)
     Ok("Cache reload triggered successfully")
   }
 
