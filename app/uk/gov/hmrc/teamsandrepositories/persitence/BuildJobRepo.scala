@@ -24,6 +24,7 @@ import reactivemongo.bson.BSONObjectID
 import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.teamsandrepositories.persitence.model.BuildJob
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
+import reactivemongo.api.bson.BSONDocument
 import reactivemongo.play.json.ImplicitBSONHandlers._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -35,8 +36,33 @@ class BuildJobRepo @Inject()(mongoConnector: MongoConnector)
     mongo          = mongoConnector.db,
     domainFormat   = BuildJob.mongoFormats) {
 
-  override def indexes: Seq[Index] =
-    Seq(Index(Seq("service" -> IndexType.Hashed), name = Some("serviceIdx")))
+  override def indexes: Seq[Index.Default] =
+    Seq(
+      Index(
+        key = Seq("service" -> IndexType.Hashed),
+        name = Some("serviceIdx"),
+        unique = false,
+        background = false,
+        sparse = false,
+        expireAfterSeconds = None,
+        storageEngine = None,
+        weights = None,
+        defaultLanguage = None,
+        languageOverride = None,
+        textIndexVersion = None,
+        sphereIndexVersion = None,
+        bits = None,
+        min = None,
+        max = None,
+        bucketSize = None,
+        collation = None,
+        wildcardProjection = None,
+        version = None,
+        partialFilter = None,
+        options = BSONDocument.empty
+      )
+
+    )
 
   def findByService(service: String)(implicit ec: ExecutionContext): Future[Option[BuildJob]] =
     find("service" -> service)

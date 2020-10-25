@@ -62,7 +62,7 @@ class TeamsAndReposPersisterSpec
     override def toJson          = ???
   }
 
-  val persister = new TeamsAndReposPersister(mongoTeamsAndRepositoriesPersister, new FutureHelpers(metrics))
+  val persister = new TeamsAndReposPersister(mongoTeamsAndRepositoriesPersister)
 
   "TeamsAndReposPersister" should {
     "delegate to MongoTeamsAndReposPersister's update" in {

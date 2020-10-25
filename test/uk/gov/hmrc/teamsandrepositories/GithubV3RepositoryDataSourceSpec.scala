@@ -102,7 +102,7 @@ class GithubV3RepositoryDataSourceSpec
   }
 
   class StubTeamsAndReposPersister
-      extends TeamsAndReposPersister(mock[MongoTeamsAndRepositoriesPersister], new FutureHelpers(metrics)) {
+      extends TeamsAndReposPersister(mock[MongoTeamsAndRepositoriesPersister]) {
     var captor: List[TeamRepositories] = Nil
 
     override def update(teamsAndRepositories: TeamRepositories)(implicit ec: ExecutionContext): Future[TeamRepositories] = {

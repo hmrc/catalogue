@@ -20,6 +20,7 @@ import com.google.inject.{Inject, Singleton}
 import play.api.Logger
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
 import play.api.libs.json._
+import reactivemongo.api.bson.BSONDocument
 import reactivemongo.api.indexes.{Index, IndexType}
 import reactivemongo.bson.{BSONObjectID, BSONRegex}
 import reactivemongo.play.json.ImplicitBSONHandlers._
@@ -30,8 +31,7 @@ import uk.gov.hmrc.teamsandrepositories.persitence.model.TeamRepositories
 import scala.concurrent.{ExecutionContext, Future}
 
 class TeamsAndReposPersister @Inject()(
-  mongoTeamsAndReposPersister: MongoTeamsAndRepositoriesPersister,
-  futureHelpers: FutureHelpers) {
+  mongoTeamsAndReposPersister: MongoTeamsAndRepositoriesPersister) {
 
   private val logger = Logger(this.getClass)
 
@@ -67,8 +67,33 @@ class MongoTeamsAndRepositoriesPersister @Inject()(mongoConnector: MongoConnecto
       mongo          = mongoConnector.db,
       domainFormat   = TeamRepositories.formats) {
 
-  override def indexes: Seq[Index] =
-    Seq(Index(Seq("teamName" -> IndexType.Hashed), name = Some("teamNameIdx")))
+  override def indexes: Seq[Index.Default] =
+    Seq(
+      Index(
+        key = Seq("teamName" -> IndexType.Hashed),
+        name = Some("teamNameIdx"),
+        unique = false,
+        background = false,
+        sparse = false,
+        expireAfterSeconds = None,
+        storageEngine = None,
+        weights = None,
+        defaultLanguage = None,
+        languageOverride = None,
+        textIndexVersion = None,
+        sphereIndexVersion = None,
+        bits = None,
+        min = None,
+        max = None,
+        bucketSize = None,
+        collation = None,
+        wildcardProjection = None,
+        version = None,
+        partialFilter = None,
+        options = BSONDocument.empty
+      )
+
+    )
 
   def update(teamAndRepos: TeamRepositories)(implicit ec: ExecutionContext): Future[TeamRepositories] =
     futureHelpers
